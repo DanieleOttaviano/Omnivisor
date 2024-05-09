@@ -1,0 +1,9 @@
+[submodule "hypervisors/jailhouse"]
+	path = hypervisors/jailhouse
+	url = git@github.com:DanieleOttaviano/jailhouse.git
+[submodule "tests/test_omnivisor_host"]
+	path = tests/test_omnivisor_host
+	url = git@github.com:DanieleOttaviano/test_omnivisor_host.git
+[submodule "tests/test_omnivisor_guest"]
+	path = tests/test_omnivisor_guest
+	url = git@github.com:DanieleOttaviano/test_omnivisor_guest
