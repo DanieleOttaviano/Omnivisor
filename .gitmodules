@@ -1,0 +1,6 @@
+[submodule "tests/test_omnivisor_host"]
+	path = tests/test_omnivisor_host
+	url = git@github.com:DanieleOttaviano/test_omnivisor_host.git
+[submodule "environment/kria/jailhouse/install/root/tests/test_omnivisor_guest"]
+	path = environment/kria/jailhouse/install/root/tests/test_omnivisor_guest
+	url = git@github.com:DanieleOttaviano/test_omnivisor_guest.git
