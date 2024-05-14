@@ -1,0 +1,17 @@
+# One CLI to format the code tree - https://github.com/numtide/treefmt
+
+
+[formatter.shell]
+command = "sh"
+options = [
+    "-eucx",
+    """
+# First shellcheck
+shellcheck --external-sources --source-path=SCRIPTDIR "$@"
+# Then format
+shfmt -i 2 -s -w "$@"
+    """,
+    "--", # bash swallows the second argument when using -c
+]
+includes = ["./**.sh"]
+excludes = []
