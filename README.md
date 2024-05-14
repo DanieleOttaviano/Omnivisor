@@ -119,7 +119,7 @@ sudo mkfs.fat /dev/sdcardpart1 -n boot
 sudo mkfs.ext4 -L root /dev/sdcardpart2 
 ```
 
-The boot images from the directory "Omnivisor/environment/\<target\>/\<backend\>/output/boot" must be transfered to the boot partition of the SD card.
+The boot images from the directory "Omnivisor/environment/\<target\>/\<backend\>/output/boot" must be transfered to the boot partition of the SD card ($SD\_BOOT\_PARTITION).
 
 ```bash
 cp ./Omnivisor/environment/kria/jailhouse/output/boot/Image $SD_BOOT_PARTITION
@@ -128,7 +128,7 @@ cp ./Omnivisor/environment/kria/jailhouse/output/boot/boot.scr $SD_BOOT_PARTITIO
 cp ./Omnivisor/environment/kria/jailhouse/output/boot/system.dtb $SD_BOOT_PARTITION
 ```
 
-the generated rootfs from the directory "Omnivisor/environment/\<target\>/\<backend\>/output/rootfs" must be transfered to the root partition of the SD card. 
+the generated rootfs from the directory "Omnivisor/environment/\<target\>/\<backend\>/output/rootfs" must be transfered to the root partition of the SD card ($SD\_ROOT\_PARTITION). 
 
 ```bash
 tar xf ./Omnivisor/environment/kria/jailhouse/output/rootfs/rootfs.tar -C $SD_ROOT_PARTITION
