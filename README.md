@@ -134,7 +134,7 @@ the generated rootfs from the directory "Omnivisor/environment/\<target\>/\<back
 tar xf ./Omnivisor/environment/kria/jailhouse/output/rootfs/rootfs.tar -C $SD_ROOT_PARTITION
 ```
 
-Insert the SD-card in the board and start it. Them insert User and Password:
+Insert the SD-card in the board, start it, and insert the following User and Password:
 
 ```bash
 login:    root
