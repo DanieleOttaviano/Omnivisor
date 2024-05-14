@@ -100,23 +100,23 @@ From now on the chosen target and backend will be the default ones. If you need 
 
 Otherwhise if you need to change the target and backend just for a single script you can always add the flags -t \<target\> -b \<backend\>.
 
-### 2. Test the kria target
+### 2. Test the Board
 
 After the "configure_everything" script, the produced images can be loaded on the SD card to be tested.
 
 Format an sd card (at least 8GB) with a boot (1GB fat) and root (rest of space, ext4) partitions:
 
 ```bash
-# sudo fdisk /dev/sdcard
-Command (m for help): d # and accept all prompts, until there are no more partitions
-Command (m for help): w
-# sudo fdisk /dev/sdcard
-Command (m for help): n # all default, except size (last sector) +1GB
-Command (m for help): a # to make it bootable
-Command (m for help): n # all default
-Command (m for help): w
-# sudo mkfs.fat /dev/sdcardpart1 -n boot
-# sudo mkfs.ext4 -L root /dev/sdcardpart2 
+sudo fdisk /dev/sdcard
+# Command (m for help): d # and accept all prompts, until there are no more partitions
+# Command (m for help): w
+sudo fdisk /dev/sdcard
+# Command (m for help): n # all default, except size (last sector) +1GB
+# Command (m for help): a # to make it bootable
+# Command (m for help): n # all default
+# Command (m for help): w
+sudo mkfs.fat /dev/sdcardpart1 -n boot
+sudo mkfs.ext4 -L root /dev/sdcardpart2 
 ```
 
 The boot images from the directory "Omnivisor/environment/\<target\>/\<backend\>/output/boot" must be transfered to the boot partition of the SD card.
