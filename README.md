@@ -226,6 +226,28 @@ To do it, open another shell and in the runphi directory launch:
 ./scripts/remote/ssh_connection.sh 
 ```
 
+## Sub-Modules Tests
+The tests are uploaded as submodules.
+
+
+To grab latest commits from server
+
+```bash
+git submodule update --recursive --remote
+```
+
+The above command will set current branch to detached HEAD. set back to main:
+
+```bash
+git submodule foreach git checkout main
+```
+
+Now do pull to fast-forward to latest commit
+
+```bash
+git submodule foreach git pull origin main
+```
+
 ## Warnings
 
 > [!WARNING]
