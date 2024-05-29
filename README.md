@@ -220,7 +220,7 @@ jailhouse cell destroy inmate-demo
 
 
 You can open an ssh connection to take control of the rootcell while the non-rootcell is running.
-To do it, open another shell and in the runphi directory launch:
+To do it, open another shell and in the base directory launch:
 
 ```bash
 ./scripts/remote/ssh_connection.sh 
