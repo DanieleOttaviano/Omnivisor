@@ -43,15 +43,15 @@ shift $((OPTIND - 1))
 source "${script_dir}"/common/set_environment.sh "${TARGET}" "${BACKEND}"
 
 # ASK user if he really wants to update
-read -r -p "Do you really want to update (your current configs will be lost)? (y/n): " UPDATE
+read -r -p "Do you really want to update "${defconfig_jailhouse_name}" (your current configs will be lost)? (y/n): " UPDATE
 
 # Update!
 if [[ "${UPDATE,,}" =~ ^y(es)?$ ]]; then
   # UPDATE JAILHOUSE
   echo "Updating JAILHOUSE config ..."
   # Copy custom jailhouse config.h in jailhouse and configure it
-  cp "${custom_jailhouse_config_dir}"/config.h "${jailhouse_config_dir}"/
-  echo "JAILHOUSE config.h has been successfully updated"
+  cp "${custom_jailhouse_config_dir}"/"${defconfig_jailhouse_name}" "${jailhouse_config_dir}"/config.h
+  echo "JAILHOUSE "${defconfig_jailhouse_name}"-> config.h has been successfully updated"
 
   # Start Menuconfig
   if [[ ${MENUCFG} -eq 1 ]]; then

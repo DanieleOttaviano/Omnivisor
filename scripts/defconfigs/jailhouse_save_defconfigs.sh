@@ -35,20 +35,20 @@ shift $((OPTIND - 1))
 # Set the Environment
 source "${script_dir}"/common/set_environment.sh "${TARGET}" "${BACKEND}"
 
-read -r -p "Do you really want to save (your current config will be saved as default)? (y/n): " SAVE
+read -r -p "Do you really want to save "${defconfig_jailhouse_name}" (if already exist it will be overwritten)? (y/n): " SAVE
 
 # Save!
 if [[ "${SAVE,,}" =~ ^y(es)?$ ]]; then
   echo "Saving JAILHOUSE config ..."
 
   # Save old
-  cp "${custom_jailhouse_config_dir}"/config.h "${custom_jailhouse_config_dir}"/config_old.h
+  cp "${custom_jailhouse_config_dir}"/"${defconfig_jailhouse_name}" "${custom_jailhouse_config_dir}"/${defconfig_jailhouse_name}_old.h
 
   # Save Jailhouse config.h
-  cp "${jailhouse_config_dir}"/config.h "${custom_jailhouse_config_dir}"/
+  cp "${jailhouse_config_dir}"/config.h "${custom_jailhouse_config_dir}"/"${defconfig_jailhouse_name}"
   if [[ $? -ne 0 ]]; then
     echo "ERROR: config.h not found"
     exit 1
   fi
-  echo "JAILHOUSE config.h has been successfully saved"
+  echo "JAILHOUSE "${defconfig_jailhouse_name}" has been successfully saved"
 fi

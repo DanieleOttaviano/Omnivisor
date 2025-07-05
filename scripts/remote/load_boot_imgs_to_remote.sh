@@ -63,7 +63,7 @@ if [ "${S}" -eq 0 ] && [ "${D}" -eq 0 ] && [ "${I}" -eq 0 ] && [ "${O}" -eq 0 ];
   usage
 fi
 
-[ ${S} -eq 1 ] && scp ${boot_dir}/boot.scr* root@${IP}:/boot/firmware/
-[ ${D} -eq 1 ] && scp ${boot_dir}/*.dtb root@${IP}:/boot/firmware/
-[ ${I} -eq 1 ] && scp ${boot_dir}/Image root@${IP}:/boot/firmware/
-[ ${O} -eq 1 ] && scp ${boot_dir}/BOOT.BIN root@${IP}:/boot/firmware/
+[ ${S} -eq 1 ] && scp -O ${boot_dir}/boot.scr* root@${IP}:/boot/firmware/
+[ ${D} -eq 1 ] && scp -O ${boot_dir}/*.dtb root@${IP}:/boot/firmware/
+[ ${I} -eq 1 ] && scp -O ${boot_dir}/Image root@${IP}:/boot/firmware/
+[ ${O} -eq 1 ] && scp -O ${boot_dir}/BOOT.BIN root@${IP}:/boot/firmware/

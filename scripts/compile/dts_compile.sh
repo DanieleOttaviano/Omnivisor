@@ -35,4 +35,9 @@ shift $((OPTIND - 1))
 source "${script_dir}"/common/set_environment.sh "${TARGET}" "${BACKEND}"
 
 # Compile device tree soruce
-dtc -O dtb -o "${boot_dir}"/system.dtb "${boot_sources_dir}"/system.dts
+dtc -O dtb -o "${boot_dir}"/system.dtb "${boot_sources_dir}"/"${dts_file}"
+if [ $? -ne 0 ]; then
+  echo "ERROR: Device tree compilation failed!"
+  exit 1
+fi
+echo "Device tree compiled successfully!"

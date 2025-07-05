@@ -4,6 +4,7 @@ usage() {
   echo -e "Usage: $0 \r\n \
   This script compile the Linux kernel Image (optionally the modules):\r\n \
     [-m compile kernel modules]\r\n \
+    [-n install modules in the NFS rootfs]\r\n \
     [-t <target>]\r\n \
     [-b <backend>]\r\n \
     [-h help]" 1>&2
@@ -15,12 +16,16 @@ current_dir=$(dirname -- "$(readlink -f -- "$0")")
 script_dir=$(dirname "${current_dir}")
 source "${script_dir}"/common/common.sh
 
+INSTALL_MOD="n"
 COMPILE_MOD="n"
 
-while getopts "mt:b:h" o; do
+while getopts "mnt:b:h" o; do
   case "${o}" in
   m)
     COMPILE_MOD="Y"
+    ;;
+  n)
+    INSTALL_MOD="Y"
     ;;
   t)
     TARGET=${OPTARG}
@@ -59,7 +64,11 @@ if [[ "${COMPILE_MOD,,}" =~ ^y(es)?$ ]]; then
   echo "LINUX KERNEL MODULES have been successfully compiled"
 
   # Install modules
-  INSTALL_MOD_PATH="${install_dir}" make -C "${linux_dir}" ARCH="${ARCH}" CROSS_COMPILE="${CROSS_COMPILE}" modules_install
+  if [[ "${INSTALL_MOD,,}" =~ ^y(es)?$ ]]; then
+    INSTALL_MOD_PATH="${rootfs_dir}/${TARGET}" make -C "${linux_dir}" ARCH="${ARCH}" CROSS_COMPILE="${CROSS_COMPILE}" modules_install
+  else
+    INSTALL_MOD_PATH="${install_dir}" make -C "${linux_dir}" ARCH="${ARCH}" CROSS_COMPILE="${CROSS_COMPILE}" modules_install
+  fi
   if [[ $? -ne 0 ]]; then
     echo "ERROR: The make command failed during the INSTALLATION of LINUX KERNEL MODULES"
     exit 1

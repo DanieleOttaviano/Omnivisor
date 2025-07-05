@@ -37,6 +37,7 @@ echo "BACKEND:  ${BACKEND}"
 env_dir="${environment_dir}"/"${TARGET}"/"${BACKEND}"
 
 # Create directory hierarchy
+mkdir -p "${env_dir}"/boot_sources
 mkdir -p "${env_dir}"/build
 mkdir -p "${env_dir}"/custom_build
 mkdir -p "${env_dir}"/environment_cfgs

@@ -6,6 +6,7 @@ usage() {
     [-m launch menuconfig after update]\r\n \
     [-t <target>]\r\n \
     [-b <backend>]\r\n \
+    [-x update busybox config]\r\n \
     [-h help]" 1>&2
   exit 1
 }
@@ -17,8 +18,9 @@ source "${script_dir}"/common/common.sh
 
 # By default no menuconfig
 MENUCFG=0
+UPDATE_BUSYBOX=n
 
-while getopts "mt:b:h" o; do
+while getopts "mt:b:xh" o; do
   case "${o}" in
   m)
     MENUCFG=1
@@ -28,6 +30,9 @@ while getopts "mt:b:h" o; do
     ;;
   b)
     BACKEND=${OPTARG}
+    ;;
+  x)
+    UPDATE_BUSYBOX=y
     ;;
   h)
     usage
@@ -43,7 +48,7 @@ shift $((OPTIND - 1))
 source "${script_dir}"/common/set_environment.sh "${TARGET}" "${BACKEND}"
 
 # ASK user if he really wants to update
-read -r -p "Do you really want to update (your current configs will be lost)? (y/n): " UPDATE
+read -r -p "Do you really want to update "${defconfig_builroot_name}" (your current configs will be lost)? (y/n): " UPDATE
 
 # Update!
 if [[ "${UPDATE,,}" =~ ^y(es)?$ ]]; then
@@ -64,6 +69,18 @@ if [[ "${UPDATE,,}" =~ ^y(es)?$ ]]; then
     exit 1
   fi
   echo "BUILDROOT has been successfully configured"
+
+  if [[ "${UPDATE_BUSYBOX,,}" =~ ^y(es)?$ ]]; then
+    # UPDATE BUSYBOX
+    echo "Updating BUSYBOX config ..."
+    echo "Updating ${defconfig_busybox_name} ..."
+
+    # Copy custom busybox defconfig in busybox and configure it
+    cp "${custom_busybox_config_dir}"/"${defconfig_busybox_name}" "${busybox_config_dir}"/.config
+    cp "${custom_busybox_config_dir}"/"${defconfig_busybox_name}" "${buildroot_dir}"/package/busybox/busybox.config
+
+    echo "BUSYBOX has been successfully configured"
+  fi
 
   # Start Menuconfig
   if [[ ${MENUCFG} -eq 1 ]]; then

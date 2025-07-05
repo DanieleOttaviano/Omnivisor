@@ -39,5 +39,11 @@ if [ "${UBUNTU_ROOTFS}" == "y" ]; then
   echo "UBUNTU_ROOTFS"
   mkimage -c none -A arm64 -T script -d "${boot_sources_dir}"/boot.script "${boot_dir}"/boot.scr.uimg
 else
-  mkimage -c none -A arm64 -T script -d "${boot_sources_dir}"/boot.cmd "${boot_dir}"/boot.scr
+  mkimage -c none -A arm64 -T script -d "${boot_sources_dir}"/"${bootcmd_file}" "${boot_dir}"/boot.scr
 fi
+
+if [ $? -ne 0 ]; then
+  echo "ERROR: Boot script compilation failed!"
+  exit 1
+fi
+echo "Boot script compiled successfully!"

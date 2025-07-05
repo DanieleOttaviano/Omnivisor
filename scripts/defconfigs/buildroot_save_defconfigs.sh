@@ -5,6 +5,7 @@ usage() {
   This script saves the buildroot configuration of the selected environment:\r\n \ 
     [-t <target>]\r\n \
     [-b <backend>]\r\n \
+    [-x save also busybox config]\r\n \
     [-h help]" 1>&2
   exit 1
 }
@@ -14,13 +15,18 @@ current_dir=$(dirname -- "$(readlink -f -- "$0")")
 script_dir=$(dirname "${current_dir}")
 source "${script_dir}"/common/common.sh
 
-while getopts "t:b:h" o; do
+SAVE_BUSYBOX=n
+
+while getopts "t:b:xh" o; do
   case "${o}" in
   t)
     TARGET=${OPTARG}
     ;;
   b)
     BACKEND=${OPTARG}
+    ;;
+  x)
+    SAVE_BUSYBOX=y
     ;;
   h)
     usage
@@ -35,7 +41,7 @@ shift $((OPTIND - 1))
 # Set the Environment
 source "${script_dir}"/common/set_environment.sh "${TARGET}" "${BACKEND}"
 
-read -r -p "Do you really want to save (your current config will be saved as default)? (y/n): " SAVE
+read -r -p "Do you really want to save "${defconfig_builroot_name}" (if already exist it will be overwritten)? (y/n): " SAVE
 
 # Save!
 if [[ "${SAVE,,}" =~ ^y(es)?$ ]]; then
@@ -54,4 +60,15 @@ if [[ "${SAVE,,}" =~ ^y(es)?$ ]]; then
   echo "BUILDROOT defconfig has been successfully saved"
 
   cp "${buildroot_config_dir}"/"${defconfig_buildroot_name}" "${custom_buildroot_config_dir}"/
+fi
+
+if [[ "${SAVE_BUSYBOX,,}" =~ ^y(es)?$ ]]; then
+  echo "Saving BUSYBOX config ..."
+  echo "saving ${defconfig_busybox_name} ..."
+
+  # Save old
+  cp "${custom_busybox_config_dir}"/"${defconfig_busybox_name}" "${custom_busybox_config_dir}"/"${defconfig_busybox_name}"_old
+
+  # Save busybox defconfig
+  cp "${busybox_config_dir}"/.config "${custom_busybox_config_dir}"/"${defconfig_busybox_name}"
 fi

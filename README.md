@@ -1,42 +1,6 @@
 # Omnivisor
 The Omnivisor is an experimental research project focused on enhancing the capabilities of static partitioning hypervisors (SPH) to trasparently manage virtual machines (VMs) on asymmetric cores while assuring temporal and spatial isolation between VMs.
 
-
-## Building System
-
-**The purpose of this repository is to automate the building of a working environmet (Target + Backend) to use/test Omnivisor.**
-
-An environment is composed by:
-- Target: The board (e.g,  kria kv260 Zynq Ultrascale +)
-- Backend: The hypervisor patched with Omnivisor extension (e.g, Jailhouse)
-
-To build a working environment we are going to use Pre-Built Components and To-Build Components.
-
-- Pre-Built Components: all the pre-compiled software for the target. This is software that we are not interested in changing or modifying but is needed to have a complete working environment (e.g. board specific firmware).
-- To-Build Components: all the software that is compiled using the scripts of this repository. This is the software that we are interested in changing and modifying dynamically.
-
-Each environment (target + backend) is characterized by a configuration file (\<target\>-\<backend\>.sh) that specifies a set of "To-Build Components" that are characterized by specific compilation flags and specific GitHub repository/commit.
-Each target "Pre-Built components" are instead stored in the \<target\>/\<backend\> directory
-
-The configure_everything.sh -t \<target\> -b \<backend\> script downloads each "To-Build component" from their GitHub repository, compiles them and puts the result artifacts with the "Pre-Built Components" in the right environment directory.
-The backend directory of the specified target will then store all the files needed to boot and run our system.
-
-While the system is running the "remote" scripts (scripts/remote/) give you a simple way to load/update software components in the environment (e.g. update Kernel, load Jailhouse, ...).
-
-## Status of the Project
-
-### Supported Hypervisor:
-- [x] Jailhouse
-
-### Supported Board:
-- [x] kria (kv260 Zynq Ultrascale +)
-
-#### Supported Cores:
-- [x] Cortex-A53 (APU)
-- [x] Cortex-R5F (RPU)
-- [x] Pico32 on FPGA (RISC-V)
-
-
 ## Repositories
 [Jailhouse-Omnivisor](https://github.com/DanieleOttaviano/jailhouse): The repository containing Jailhouse hypervisor patched with Omnivisor model.
 
@@ -46,104 +10,129 @@ While the system is running the "remote" scripts (scripts/remote/) give you a si
 
 [Patched-ATF](https://github.com/DanieleOttaviano/arm-trusted-firmware): The repository containing the patched version of the arm-trusted-firmware to run the Omnivisor.
 
+## Overview
 
-## Dependencies
+This repository provides a unified framework to build the full software stack required to run **Omnivisor** on real hardware environments.
+
+Each environment consists of:
+- **Pre-Built Components**: Board-specific firmware and dependencies that are not intended for modification (e.g., board-specific firmware).
+- **To-Build Components**: Customizable software built using this repository (e.g., kernels, hypervisors, and RunPHI itself).
+
+A dedicated configuration script (`<target>-<backend>.sh`) defines the set of components, Git repositories, commits, and compilation flags for each environment.
+
+## Table of Contents
+
+- [1. Supported Platforms](#1-supported-platforms)
+  - [1.1 Supported Hypervisor](#11-supported-hypervisor)
+  - [1.2 Supported Boards](#12-supported-board)
+- [2. Dependencies](#2-dependencies)
+  - [2.1 Add User to Docker Group](#21-add-user-to-docker-group)
+  - [2.2 Build and Launch Docker Environment](#22-build-and-launch-docker-environment)
+  - [2.3 Optional: Native Setup Without Docker](#23-optional-native-setup-without-docker-not-recommended)
+- [3. Usage](#3-usage)
+  - [3.1 Review Configuration](#31-review-configuration)
+  - [3.2 Build the Environment](#32-build-the-environment)
+  - [3.3 Setup the Target](#33-setup-the-target)
+  - [3.4 (Optional) Configure SSH Access](#34-optional-configure-ssh-access)
+  - [3.5 Load Components to Target](#35-load-components-to-target)
+  - [3.6 Test the Environment](#36-test-the-environment)
+
+## 1. Supported Platforms
+
+### 1.1 Supported Hypervisor:
+- [x] Jailhouse
+
+### 1.2 Supported Board:
+- [x] kria (kv260 Zynq Ultrascale +)
+
+#### 1.2.1 Supported Cores:
+- [x] Cortex-A53 (APU)
+- [x] Cortex-R5F (RPU)
+- [x] Pico32 on FPGA (RISC-V)
+
+
+## 2. Dependencies
 
 > [!WARNING]
-> We strongly recommend you run the compiling scripts in a docker image to avoid unexpected errors due to different software versions (e.g., compilers version).
+> **Recommended**: Use Docker to avoid inconsistencies caused by different toolchain versions.
 
-To open a shell in the Docker image with all the needed dependencies just run:
+### 2.1 Add User to Docker Group
+Be sure to add the username to the docker group
 
 ```bash
-cd docker/
-docker build -t omnvdocker .
-cd ../../
-docker run -it --rm --user $(id -u):$(id -g) -v /etc/passwd:/etc/passwd:ro --net=host --name jhomnv -v ./Omnivisor:/home omnvdocker /bin/bash
+sudo usermod -aG docker <username>
+newgrp docker
 ```
 
-> [!NOTE]
-> You may need to specify the entire absolute path to Omnivisor: change ./Omnivisor with \<your path\>/Omnivisor
-
-Once in the docker container, move to the home directory
+### 2.2 Build and Launch Docker Environment
+To open a shell in the Docker image with all the needed dependencies, just run:
 
 ```bash
-cd ~
+cd ~/Omnivisor
+docker build -t env_builder .
+docker run -it --rm --user $(id -u):$(id -g) -v /etc/passwd:/etc/passwd:ro --net=host --name env_builder_container -v ${PWD}:/home -w="/home" env_builder /bin/bash
 ```
 
-It is possible to run the scripts without docker but you will need the following packages (we don't recommend it):
+### 2.3 Optional: Native Setup Without Docker (Not Recommended)
 
 ```bash
-apt-get update
-apt-get install -y git make sed binutils diffutils python3 ninja-build build-essential bzip2 tar findutils unzip cmake rsync u-boot-tools gcc-arm-none-eabi gcc-aarch64-linux-gnu libglib2.0-dev libpixman-1-dev wget cpio rsync bc libncurses5 flex bison openssl libssl-dev kmod python3-pip file pkg-config
+apt-get update && apt-get install -y \
+  git make sed binutils diffutils python3 ninja-build build-essential \
+  bzip2 tar findutils unzip cmake rsync u-boot-tools \
+  gcc-arm-none-eabi gcc-aarch64-linux-gnu libglib2.0-dev \
+  libpixman-1-dev wget cpio rsync bc libncurses5 flex bison \
+  openssl libssl-dev kmod python3-pip file pkg-config
+
 pip3 install Mako
 ```
 
+---
 
-## How to use the repository
+## 3. Usage
 
-> [!NOTE]
-> For each script you can use the flag _-h_ (help) to understand the behavior of the script and the accepted flags.
+### 3.1 Review Configuration
 
-### 1. Download, configure, and compile everything
-
-Launch the following script to download, configure and compile all the "To-Build Components" for the chosen \<target\> (e.g. kria) and \<backend\> (e.g. jailhouse):
-
-```bash
-./scripts/configure_everything.sh -t kria -b jailhouse
+The environments configurations, including GitHub repositories, commits, patches, and more, can be found in the following file: 
+```
+environment_cfgs/<target>-<backend>.sh
 ```
 
-From now on the chosen target and backend will be the default ones. If you need to change for some reason the default target and backend, we provide the script "change_environment":
+More details about configurations are documented [here](documentation/environment_cfgs.md).
+
+
+### 3.2 Build the Environment
+Launch the following script to download, configure, and compile all the "To-Build Components" for the chosen \<target\> (e.g. kria) and \<backend\> (e.g. jailhouse):
+
+```bash
+./scripts/build_environment.sh -t <target> -b <backend>
+```
+
+The previous script set the default environment. To switch the default environment:
 
 ```bash
 ./scripts/change_environment.sh -t <target> -b <backend>
 ```
 
-Otherwhise if you need to change the target and backend just for a single script you can always add the flags -t \<target\> -b \<backend\>.
+You can override the default environment in any script using `-t` and `-b` flags.
 
-### 2. Test the Board
 
-After the "configure_everything" script, the produced images can be loaded on the SD card to be tested.
+### 3.3 Setup the Target
 
-Format an sd card (at least 8GB) with a boot (1GB fat) and root (rest of space, ext4) partitions:
+Different environemnts have different setup steps (e.g., load the SD card with the produced artifacts).
+Refer to the `SETUP.md` file specific for each target-backend in:
 
-```bash
-sudo fdisk /dev/sdcard
-# Command (m for help): d # and accept all prompts, until there are no more partitions
-# Command (m for help): w
-sudo fdisk /dev/sdcard
-# Command (m for help): n # all default, except size (last sector) +1GB
-# Command (m for help): a # to make it bootable
-# Command (m for help): n # all default
-# Command (m for help): w
-sudo mkfs.fat /dev/sdcardpart1 -n boot
-sudo mkfs.ext4 -L root /dev/sdcardpart2 
+```
+environment/<target>/<backend>/SETUP.md
 ```
 
-The boot images from the directory "Omnivisor/environment/\<target\>/\<backend\>/output/boot" must be transfered to the boot partition of the SD card ($SD\_BOOT\_PARTITION).
+### 3.4 (Optional) Configure SSH Access
 
-```bash
-cp ./Omnivisor/environment/kria/jailhouse/output/boot/Image $SD_BOOT_PARTITION
-cp ./Omnivisor/environment/kria/jailhouse/output/boot/BOOT.BIN $SD_BOOT_PARTITION
-cp ./Omnivisor/environment/kria/jailhouse/output/boot/boot.scr $SD_BOOT_PARTITION
-cp ./Omnivisor/environment/kria/jailhouse/output/boot/system.dtb $SD_BOOT_PARTITION
-```
+> [!NOTE]
+> All the scripts in ./scripts/remote/* can be launched outside the docker container.
 
-the generated rootfs from the directory "Omnivisor/environment/\<target\>/\<backend\>/output/rootfs" must be transfered to the root partition of the SD card ($SD\_ROOT\_PARTITION). 
+Allow password-less access to the running target (only once).
 
-```bash
-tar xf ./Omnivisor/environment/kria/jailhouse/output/rootfs/rootfs.tar -C $SD_ROOT_PARTITION
-```
-
-Insert the SD-card in the board, start it, and insert the following User and Password:
-
-```bash
-login:    root
-Password: root
-```
-
-### 3. Configure ssh [OPTIONAL]
-
-While the board is running, use the following script on the host machine to create a local key pair for the user (if it doesn't exist) and send the pub key to the target to authorize the host to exchange data without requiring any password
+**While the target is running**:
 
 ```bash
 ./scripts/remote/set_remote_ssh.sh
@@ -157,78 +146,32 @@ mkdir .ssh
 cp /etc/dropbear/authorized_keys ~/.ssh
 ```
 
+### 3.5 Load Components to Target
 
-### 4. Load projects
+Load/update components (e.g., Jailhouse) on the target
 
-Use the following script to sync the install directory (as an overlay filesystem) in the target file system:
-
-```bash
-./scripts/remote/load_install_dir_to_remote.sh
-```
-
-Use the following script to load (or update if already loaded) Jailhouse in the board filesystem (run with -h flag for help).
-
+**While the target is running**:
 ```bash
 ./scripts/remote/load_components_to_remote.sh -j
 ```
 
-Verify in the /root directory if the files have been loaded correctly.
+[Optional] Sync the install directory (overlay directory specific to the enviornment) to the target.
 
-### 5. Test the Omnivisor
-
-Update the PATH by logging again:
-
+**While the target is running**:
 ```bash
-exit
+./scripts/remote/load_install_dir_to_remote.sh
 ```
 
-```bash
-login:  root
-Password: root
+### 3.6 Test the Environment
+
+Follow the `DEMO.md` in the relevant environment folder.
+
+```
+environment/<target>/<backend>/DEMO.md
 ```
 
-Verify that the jailhouse PATH have been exported correctly by printing the version:
-
-```bash
-jailhouse --version
-```
-
-Load the jailhouse hypervisor, using the previously loaded script:
-
-```bash
-cd scripts_jailhouse_<target>/
-sh jailhouse_start.sh
-```
-
-Verify that the rootcell is running:
-
-```bash
-jailhouse cell list
-```
-
-Try to create baremetal cell:
-
-```bash
-sh gic_demo.sh
-```
-
-Stop the baremetal cell:
-
-```bash
-jailhouse cell destroy inmate-demo
-```
-
-
-You can open an ssh connection to take control of the rootcell while the non-rootcell is running.
-To do it, open another shell and in the base directory launch:
-
-```bash
-./scripts/remote/ssh_connection.sh 
-```
-
-## Sub-Modules Tests
+#### Sub-Modules Tests
 The tests are uploaded as submodules.
-
 
 To grab latest commits from server
 
@@ -248,7 +191,14 @@ Now do pull to fast-forward to latest commit
 git submodule foreach git pull origin main
 ```
 
-## Warnings
+### 3.7 Clean the Build
 
-> [!WARNING]
-> In order to run Jailhouse, the Linux kernel needs to be configured enabling CONFIG_OF_OVERLAY, CONFIG_KALLSYMS_ALL, and CONFIG_KPROBES.
+Inside the Docker container:
+
+```bash
+./scripts/clean/destroy_build.sh
+```
+
+## Contact 📬 
+
+For more information or contributions, please open an issue or contact the Omnivisor maintainers.

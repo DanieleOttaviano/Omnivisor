@@ -45,3 +45,22 @@ echo "BUILDROOT has been successfully compiled"
 
 # Copy rootfs in rootcell
 cp ${rootfs_image_dir}/* ${rootfs_dir}/
+
+# Export the rootfs.tar into the target directory
+if [ ! -d "${rootfs_dir}/${TARGET}/" ]; then
+  mkdir -p "${rootfs_dir}/${TARGET}/"
+fi
+
+# Check if the directory is empty
+if [ -z "$(ls -A "${rootfs_dir}/${TARGET}/")" ]; then
+  tar -xvf "${rootfs_dir}/rootfs.tar" -C "${rootfs_dir}/${TARGET}/"
+else
+  echo "The directory ${rootfs_dir}/${TARGET}/ is not empty. Moving content to ${rootfs_dir}/OLD_${TARGET} and extracting."
+  if [ -d "${rootfs_dir}/OLD_${TARGET}" ]; then
+    echo "The directory ${rootfs_dir}/OLD_${TARGET} already exists. Removing it..."
+    rm -rf "${rootfs_dir}/OLD_${TARGET}"
+  fi
+  mv "${rootfs_dir}/${TARGET}/" "${rootfs_dir}/OLD_${TARGET}" 
+  mkdir -p "${rootfs_dir}/${TARGET}/"
+  tar -xvf "${rootfs_dir}/rootfs.tar" -C "${rootfs_dir}/${TARGET}/"
+fi

@@ -61,23 +61,23 @@ echo "BACKEND: ${BACKEND}"
 ARCH="arm64"
 
 ## Environment DIRECTORIES ##
+# CONFIGURATIONS
+environment_cfgs_dir=${environment_dir}/../environment_cfgs
 target_dir=${environment_dir}/${TARGET}
 backend_dir=${target_dir}/${BACKEND}
+# BOOT SOURCES
+boot_sources_dir=${backend_dir}/boot_sources
 # INSTALL
 install_dir=${backend_dir}/install
 # OUTPUT
 output_dir=${backend_dir}/output
 hardware_dir=${output_dir}/hardware
 boot_dir=${output_dir}/boot
-boot_sources_dir=${boot_dir}/sources
 rootfs_dir=${output_dir}/rootfs
 # BUILD
 build_dir=${backend_dir}/build
 # CUSTOM BUILD
 custom_build_dir=${backend_dir}/custom_build
-# CONFIGURATIONS
-environment_cfgs_dir=${backend_dir}/environment_cfgs
-
 
 #### COMPONENTS DIRECTORIES ####
 # QEMU
@@ -86,6 +86,13 @@ qemu_bin_dir=${qemu_dir}/build/aarch64-softmmu
 # ATF
 atf_dir=${build_dir}/arm-trusted-firmware
 atf_image_dir=${atf_dir}/build/zynqmp/release/bl31
+# U-BOOT
+uboot_dir=${build_dir}/u-boot
+uboot_image_dir=${uboot_dir}
+uboot_config_dir=${uboot_dir}/configs
+custom_uboot_dir=${custom_build_dir}/u-boot
+custom_uboot_config_dir=${custom_uboot_dir}/configs
+custom_uboot_patch_dir=${custom_uboot_dir}/patch
 # LINUX
 linux_dir=${build_dir}/linux
 image_dir=${linux_dir}/arch/${ARCH}/boot
@@ -97,25 +104,72 @@ custom_linux_patch_dir=${custom_linux_dir}/patch
 buildroot_dir=${build_dir}/buildroot
 rootfs_image_dir=${buildroot_dir}/output/images
 buildroot_config_dir=${buildroot_dir}/configs
+busybox_config_dir=${buildroot_dir}/output/build/busybox-1.36.1
 aarch64_buildroot_linux_gnu_dir=${buildroot_dir}/output/host/bin
 custom_buildroot_dir=${custom_build_dir}/buildroot
 custom_buildroot_config_dir=${custom_buildroot_dir}/configs
 custom_buildroot_patch_dir=${custom_buildroot_dir}/patch
+custom_busybox_config_dir=${custom_buildroot_dir}/busybox_configs
+
+
 # JAILHOUSE
 jailhouse_dir=${build_dir}/jailhouse
 jailhouse_config_dir=${jailhouse_dir}/include/jailhouse
 jailhouse_cell_dir=${jailhouse_dir}/configs/${ARCH}
+jailhouse_inmate_demos_dir=${jailhouse_dir}/inmates/demos
 custom_jailhouse_dir=${custom_build_dir}/jailhouse
 custom_jailhouse_config_dir=${custom_jailhouse_dir}/include/jailhouse
 custom_jailhouse_patch_dir=${custom_jailhouse_dir}/patch
 custom_jailhouse_cell_dir=${custom_jailhouse_dir}/configs/${ARCH}
+custom_jailhouse_inmate_demos_dir=${custom_jailhouse_dir}/inmates/demos
+
 # BOOTGEN
 bootgen_dir=${build_dir}/bootgen
 
-## DEFCONFIGS ##
-# JAILHOUSE
-defconfig_buildroot_name=${BACKEND}_${TARGET}_buildroot_defconfig
-defconfig_linux_name=${BACKEND}_${TARGET}_kernel_defconfig
-
 ## SETUP THE SPECIFIC TARGET ##
 source ${environment_cfgs_dir}/${TARGET}-${BACKEND}.sh
+
+
+## Boot Sources Configurations ##
+if [[ -n "${BOOTCMD_CONFIG}" ]]; then
+  bootcmd_file=boot_${BOOTCMD_CONFIG}.cmd
+else
+  bootcmd_file=boot.cmd
+fi
+if [[ -n "${DTS_CONFIG}" ]]; then
+  dts_file=system_${DTS_CONFIG}.dts
+else
+  dts_file=system.dts
+fi
+
+
+## DEFCONFIGS ##
+if [[ -n "${BUILDROOT_CONFIG}" ]]; then
+  defconfig_buildroot_name=${BACKEND}_${TARGET}_${BUILDROOT_CONFIG}_buildroot_defconfig
+else
+  defconfig_buildroot_name=${BACKEND}_${TARGET}_buildroot_defconfig
+fi
+
+if [[ -n "${BUSYBOX_CONFIG}" ]]; then
+  defconfig_busybox_name=${BACKEND}_${TARGET}_${BUSYBOX_CONFIG}_busybox_defconfig
+else
+  defconfig_busybox_name=${BACKEND}_${TARGET}_busybox_defconfig
+fi
+
+if [[ -n "${LINUX_CONFIG}" ]]; then
+  defconfig_linux_name=${BACKEND}_${TARGET}_${LINUX_CONFIG}_kernel_defconfig
+else
+  defconfig_linux_name=${BACKEND}_${TARGET}_kernel_defconfig
+fi
+
+if [[ -n "${UBOOT_CONFIG}" ]]; then
+  defconfig_uboot_name=${BACKEND}_${TARGET}_${UBOOT_CONFIG}_u-boot_defconfig
+else
+  defconfig_uboot_name=${BACKEND}_${TARGET}_u-boot_defconfig
+fi
+
+if [[ -n "${JAILHOUSE_CONFIG}" ]]; then
+  defconfig_jailhouse_name=config_${JAILHOUSE_CONFIG}.h
+else
+  defconfig_jailhouse_name=config.h
+fi

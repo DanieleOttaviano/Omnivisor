@@ -44,4 +44,4 @@ sed -i "s/TARGET=\"[^\"]*\"/TARGET=\"${TARGET}\"/;s/BACKEND=\"[^\"]*\"/BACKEND=\
 echo "Environment changed to:"
 echo "TARGET: ${TARGET}"
 echo "BACKEND: ${BACKEND}"
-echo "All the scrip will use them as default."
+echo "All the scripts will use them as default."
