@@ -1,0 +1,65 @@
+#!/bin/bash
+
+## Connection
+IP="10.162.12.226"
+USER="ubuntu"
+SSH_ARGS=""
+RSYNC_ARGS_SSH=""
+RSYNC_ARGS=""
+RSYNC_REMOTE_PATH="/home/ubuntu"
+
+## CROSS COMPILING ARCHITECTURES
+ARCH="arm64"
+CROSS_COMPILE="aarch64-linux-gnu-"
+
+## Boot Sources Configuration
+BOOTCMD_CONFIG=""
+DTS_CONFIG=""
+
+## COMPONENTS ##
+# QEMU
+QEMU_BUILD="n"
+
+# ATF
+ATF_BUILD="y"
+ATF_COMPILE_ARGS=""
+ATF_PATCH_ARGS=""
+ATF_REPOSITORY="https://github.com/DanieleOttaviano/arm-trusted-firmware.git"
+ATF_BRANCH="master"
+ATF_COMMIT=""
+ATF_CONFIG=""
+
+# U-BOOT 
+UBOOT_BUILD="n"
+
+# LINUX
+LINUX_BUILD="y"
+UPD_LINUX_COMPILE_ARGS=""
+LINUX_COMPILE_ARGS="-m"
+LINUX_PATCH_ARGS="-d jailhouse_enable" # preempt-rt
+LINUX_REPOSITORY="https://github.com/Xilinx/linux-xlnx.git"
+LINUX_BRANCH="xlnx_rebase_v6.1_LTS"
+LINUX_COMMIT=""
+LINUX_CONFIG=""
+
+# BUILDROOT
+BUILDROOT_BUILD="n"
+
+# JAILHOUSE
+JAILHOUSE_BUILD="y"
+UPD_JAILHOUSE_COMPILE_ARGS=""
+JAILHOUSE_COMPILE_ARGS="-n -r all"
+JAILHOUSE_PATCH_ARGS=""
+JAILHOUSE_REPOSITORY="https://github.com/DanieleOttaviano/jailhouse.git"
+JAILHOUSE_BRANCH="master"
+JAILHOUSE_COMMIT=""
+JAILHOUSE_CONFIG="omnv"
+
+# BOOTGEN
+BOOTGEN_BUILD="y"
+BOOTGEN_COMPILE_ARGS=""
+BOOTGEN_PATCH_ARGS=""
+BOOTGEN_REPOSITORY="https://github.com/Xilinx/bootgen.git"
+BOOTGEN_BRANCH="xlnx_rel_v2022.1"
+BOOTGEN_COMMIT="c77d7998d0db56f8a19642275e061b308bc24d53"
+BOOTGEN_CONFIG=""
