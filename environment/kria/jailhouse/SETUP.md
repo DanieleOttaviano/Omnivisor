@@ -36,7 +36,9 @@ Only after that we can rewrite the sd card with the other artifacts produced wit
     sudo picocom -b 115200 /dev/ttyUSB1
     ```
 
-## Build The Environment
+## Option 1: SD Card
+
+### Build The Environment
 Launch the build_environment.sh script to generate the needed artifacts.
 
   - Enter the docker container.
@@ -45,10 +47,10 @@ Launch the build_environment.sh script to generate the needed artifacts.
 ```
   - Launch the build.
 ```sh 
-  ./scripts/build_environment.sh -t kr260 -b jailhouse
+  ./scripts/build_environment.sh -t kria -b jailhouse
 ```
 
-## Load BOOT.BIN into QSPI
+### Load BOOT.BIN into QSPI
 
 To chage the BOOT.BIN into the QSPI memory, we can use the xmutil applicaiton in the Ubuntu image we loaded 
 (see [Kria_SOM_Boot_Firmware_Update](https://xilinx-wiki.atlassian.net/wiki/spaces/A/pages/3020685316/Kria+SOM+Boot+Firmware+Update) for further information).
@@ -80,7 +82,7 @@ Login into the Ubuntu image of the kria again and launch the following command t
 sudo xmutil bootfw_update -v
 ```
 
-## Load the other artifacts
+### Load the other artifacts 
 The other produced images can be loaded on the SD card to be tested.
 
 Format an sd card (at least 8GB) with a boot (1GB fat) and root (rest of space, ext4) partitions:
@@ -114,6 +116,87 @@ tar xf ./environment/kria/jailhouse/output/rootfs/rootfs.tar -C $SD_ROOT_PARTITI
 ```
 
 Insert the SD-card in the board, start it, and insert the following User and Password:
+
+```bash
+login:    root
+Password: root
+```
+
+## Option 2: TFTP + NFS
+
+Another way to use the artifact produced by the compilation is to use TFTP boot and FFS (this guide will not cover the NFS/TFTP server setup).
+
+### Configure the environment
+1. In the boot_sources directory of this environment there is a boot_nfs.cmd that can be compiled to produce a boot.scr used by the platform at boot time (check the variable and set them according to your server setup).
+
+* set the BOOTCMD_CONFIG="nfs" in the environment_cfgs/kria-jailhouse.sh
+
+2. The kria QSPI cannot be written using saveenv in U-BOOT. So you cannot save the command to load the boot.scr as default. The only way to do it is integrate the command during the U-BOOT compile time.
+
+* Use the script u-boot_update_defconfig.sh -m  and change the BOOTCMD to do it e.g.: 
+      ```sh
+      CONFIG_BOOTCOMMAND="if dhcp ${scriptaddr} kria/boot.scr; then source ${scriptaddr}
+      ```
+
+### Build The Environment
+Launch the build_environment.sh script to generate the needed artifacts.
+
+  - Enter the docker container.
+```sh
+  make run
+```
+  - Launch the build.
+```sh 
+  ./scripts/build_environment.sh -t kria -b jailhouse
+```
+
+### Load BOOT.BIN into QSPI
+
+To chage the BOOT.BIN into the QSPI memory, we can use the xmutil applicaiton in the Ubuntu image we loaded 
+(see [Kria_SOM_Boot_Firmware_Update](https://xilinx-wiki.atlassian.net/wiki/spaces/A/pages/3020685316/Kria+SOM+Boot+Firmware+Update) for further information).
+
+Copy the BOOT.BIN generated in the target platform:
+```sh
+scp environment/kr260/jailhouse/output/boot/BOOT.BIN ubuntu@<IP>:~/
+```
+
+In the platform launch the following command after coping the correct BOOT.BIN generated through this repo:
+```sh
+sudo xmutil bootfw_update -i <path to boot.bin>
+```
+
+The system has a backup firmware management with two separated system called A and B. 
+Using the following command you should see that the loaded firmware will be the next to be booted: 
+```sh
+sudo xmutil bootfw_status
+```
+
+Then reboot the board:
+```sh
+sudo reboot
+```
+
+If the atf and u-boot are correctly loaded you need to save it before the next reboot.
+Login into the Ubuntu image of the kria again and launch the following command to do it:
+```sh
+sudo xmutil bootfw_update -v
+```
+
+### Load the other artifact
+Copy the boot artifacts in the server tftp directory for the kria.
+
+```bash
+cp ./environment/kria/jailhouse/output/boot/Image $TFTP_BOOT_DIR
+cp ./environment/kria/jailhouse/output/boot/boot.scr $TFTP_BOOT_DIR
+cp ./environment/kria/jailhouse/output/boot/system.dtb $TFTP_BOOT_DIR
+```
+
+Link the rootfs directory of the platform to the IP in the tftp directory:
+```bash
+sudo ln -s <abs_path>/environment/kria/jailhouse/output/rootfs/kria /tftpboot/<board-IP>
+```
+
+Start the board.
 
 ```bash
 login:    root
