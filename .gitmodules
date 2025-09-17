@@ -4,3 +4,6 @@
 [submodule "environment/kria/jailhouse/install/root/tests/test_omnivisor_guest"]
 	path = environment/kria/jailhouse/install/root/tests/test_omnivisor_guest
 	url = git@github.com:DanieleOttaviano/test_omnivisor_guest.git
+[submodule "omnv_rproc"]
+	path = omnv_rproc
+	url = git@github.com:DanieleOttaviano/omnv_rproc.git

@@ -29,10 +29,6 @@
 - clean
   - destroy_build.sh
     > Delete build and outputs of the \<target\>
-  - remove_backend.sh
-    > Delete all the files and configuration related to a specific \<backend\> in a specified \<target\>
-  - remove_environment.sh
-    > Delete all the files and configuration related to a specific environment (target + backend)
 - common
   > Scripts used by other scripts to set the environmental variables (Users should not use them).
 - compile
@@ -47,8 +43,6 @@
   > Script to launch the QEMU emulation (the target is QEMU).
 - remote
   > Scripts to update and load components, images, and utilities on the running environment.
-- change_environment.sh
-  > Change the current environment to set a specific \<target\>+\<backend\>.
 - build_environment.sh
   > Download and compile all the "To-Build Components" for a given environment (\<target\>+\<backend\>) with a single script (it may take a while...).
 

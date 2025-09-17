@@ -4,6 +4,8 @@ The Omnivisor is an experimental research project focused on enhancing the capab
 ## Repositories
 [Jailhouse-Omnivisor](https://github.com/DanieleOttaviano/jailhouse): The repository containing Jailhouse hypervisor patched with Omnivisor model.
 
+[Omnivisor-remoteproc](https://github.com/DanieleOttaviano/omnv_rproc): The repository containing remoteproc drivers and device tree overlays for Omnivisor demos.
+
 [Test_Omnivisor_Host](https://github.com/DanieleOttaviano/test_omnivisor_host): The repository containing the scripts that run on the Host PC linked to a board under test. It contains the scripts to test the Omnivisor.
 
 [Test_Omnivisor_Guest](https://github.com/DanieleOttaviano/test_omnivisor_guest): The repository containing the scripts that run directly on the board (guest) where the Omnivisor is enabled.
@@ -69,21 +71,7 @@ To open a shell in the Docker image with all the needed dependencies, just run:
 
 ```bash
 cd ~/Omnivisor
-docker build -t env_builder .
-docker run -it --rm --user $(id -u):$(id -g) -v /etc/passwd:/etc/passwd:ro --net=host --name env_builder_container -v ${PWD}:/home -w="/home" env_builder /bin/bash
-```
-
-### 2.3 Optional: Native Setup Without Docker (Not Recommended)
-
-```bash
-apt-get update && apt-get install -y \
-  git make sed binutils diffutils python3 ninja-build build-essential \
-  bzip2 tar findutils unzip cmake rsync u-boot-tools \
-  gcc-arm-none-eabi gcc-aarch64-linux-gnu libglib2.0-dev \
-  libpixman-1-dev wget cpio rsync bc libncurses5 flex bison \
-  openssl libssl-dev kmod python3-pip file pkg-config
-
-pip3 install Mako
+make build && make run
 ```
 
 ---
@@ -107,13 +95,7 @@ Launch the following script to download, configure, and compile all the "To-Buil
 ./scripts/build_environment.sh -t <target> -b <backend>
 ```
 
-The previous script set the default environment. To switch the default environment:
-
-```bash
-./scripts/change_environment.sh -t <target> -b <backend>
-```
-
-You can override the default environment in any script using `-t` and `-b` flags.
+The previous script set the default environment.  You can override the default environment in any script using `-t` and `-b` flags again.
 
 
 ### 3.3 Setup the Target

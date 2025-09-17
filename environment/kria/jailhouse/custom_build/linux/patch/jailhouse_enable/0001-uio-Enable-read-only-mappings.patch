@@ -1,22 +1,20 @@
-From 28ab8cad0957818fa6b0bfdce7662ce4138c5292 Mon Sep 17 00:00:00 2001
-From: Jan Kiszka <jan.kiszka@siemens.com>
-Date: Tue, 4 Jun 2019 14:40:09 +0200
-Subject: [PATCH 01/43] uio: Enable read-only mappings
+From 3667dd519dc31df63010a6e05070e91464daa545 Mon Sep 17 00:00:00 2001
+From: Daniele Ottaviano <daniele.ottaviano@tum.de>
+Date: Fri, 5 Sep 2025 16:49:44 +0200
+Subject: [PATCH] This allows to tag memory regions read-only, denying
+ userspace to map them writable. Default remains read/write.
 
-This allows to tag memory regions read-only, denying userspace to map
-them writable. Default remains read/write.
-
-Signed-off-by: Jan Kiszka <jan.kiszka@siemens.com>
+Signed-off-by: Daniele Ottaviano <daniele.ottaviano@tum.de>
 ---
- drivers/uio/uio.c          | 9 +++++++++
+ drivers/uio/uio_core.c     | 9 +++++++++
  include/linux/uio_driver.h | 2 ++
  2 files changed, 11 insertions(+)
 
-diff --git a/drivers/uio/uio.c b/drivers/uio/uio.c
-index e55e8cef8..e01d87da9 100644
---- a/drivers/uio/uio.c
-+++ b/drivers/uio/uio.c
-@@ -792,6 +792,15 @@ static int uio_mmap(struct file *filep, struct vm_area_struct *vma)
+diff --git a/drivers/uio/uio_core.c b/drivers/uio/uio_core.c
+index e51a7e987..b61d99bcd 100644
+--- a/drivers/uio/uio_core.c
++++ b/drivers/uio/uio_core.c
+@@ -834,6 +834,15 @@ static int uio_mmap(struct file *filep, struct vm_area_struct *vma)
  		goto out;
  	}
  
@@ -53,5 +51,5 @@ index 47c5962b8..e7a101e47 100644
  	struct uio_map		*map;
  };
 -- 
-2.34.1
+2.39.5
 

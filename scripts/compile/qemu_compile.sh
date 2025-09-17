@@ -1,7 +1,13 @@
 #!/bin/bash
 
+# Colors
+GREEN='\033[1;32m'
+CYAN='\033[1;36m'
+RED='\033[1;31m'
+RESET='\033[0m'
+
 usage() {
-  echo -e "Usage: $0 \r\n \
+  echo -e "${GREEN}Usage: $0${RESET} \r\n \
   This script build QEMU for the specified <target> and <backend>:\r\n \
     [-t <target>]\r\n \
     [-b <backend>]\r\n \
@@ -39,7 +45,7 @@ cd "${qemu_dir}" || exit 1
 ./configure --target-list=aarch64-softmmu
 make -j"$(nproc)"
 if [[ $? -ne 0 ]]; then
-  echo "Error: The make command failed during the compilation of QEMU."
+  echo -e "${RED}Error: The make command failed during the compilation of QEMU.${RESET}"
   exit 1
 fi
-echo "QEMU has been successfully compiled"
+echo -e "${GREEN}QEMU has been successfully compiled${RESET}"

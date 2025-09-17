@@ -49,12 +49,10 @@ RSYNC_REMOTE_PATH="/home/user"
 
 ### 1.2 Cross-Compiling Architectures
 These variables define the toolchains used for local and remote builds.
-For now only arm64 is supported (arm32 for remote processors with Omnivisor).
+For now only arm64 is supported.
 ```bash
 ARCH="arm64"
-BUILD_ARCH="aarch64" # u-boot needs it
 CROSS_COMPILE="aarch64-linux-gnu-"
-REMOTE_COMPILE="arm-none-eabi-" # Cortex-R5 co-processor (Omnivisor)
 ```
 
 ### 1.3 Components

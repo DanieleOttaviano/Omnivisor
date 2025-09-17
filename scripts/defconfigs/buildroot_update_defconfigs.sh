@@ -1,93 +1,91 @@
 #!/bin/bash
 
 usage() {
-  echo -e "Usage: $0 \r\n \
-  This script updates the buildroot configurations of the selected environment:\r\n \
-    [-m launch menuconfig after update]\r\n \
-    [-t <target>]\r\n \
-    [-b <backend>]\r\n \
-    [-x update busybox config]\r\n \
-    [-h help]" 1>&2
+  cat <<EOF
+$(basename "$0") - Update Buildroot (and optionally BusyBox) configuration
+
+Usage:
+  $0 [options]
+
+Options:
+  -t, --target <val>    Target board/platform
+  -b, --backend <val>   Backend (e.g. jailhouse)
+  -m, --menuconfig      Launch menuconfig after update
+  -x, --busybox         Update BusyBox config as well
+  -h, --help            Show this help message
+EOF
   exit 1
 }
 
-# DIRECTORIES
-current_dir=$(dirname -- "$(readlink -f -- "$0")")
-script_dir=$(dirname "${current_dir}")
-source "${script_dir}"/common/common.sh
+# Directories & helpers
+curr_dir=$(dirname -- "$(readlink -f -- "$0")")
+script_dir=$(dirname "$curr_dir")
+source "$script_dir/common/common.sh"
 
-# By default no menuconfig
 MENUCFG=0
-UPDATE_BUSYBOX=n
+UPDATE_BUSYBOX="n"
 
-while getopts "mt:b:xh" o; do
-  case "${o}" in
-  m)
-    MENUCFG=1
-    ;;
-  t)
-    TARGET=${OPTARG}
-    ;;
-  b)
-    BACKEND=${OPTARG}
-    ;;
-  x)
-    UPDATE_BUSYBOX=y
-    ;;
-  h)
-    usage
-    ;;
-  *)
-    usage
-    ;;
+# Parse args
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -t|--target)   TARGET="$2"; shift 2 ;;
+    -b|--backend)  BACKEND="$2"; shift 2 ;;
+    -m|--menuconfig) MENUCFG=1; shift ;;
+    -x|--busybox)  UPDATE_BUSYBOX="y"; shift ;;
+    -h|--help)     usage ;;
+    *) error "Unknown option: $1"; usage ;;
   esac
 done
-shift $((OPTIND - 1))
 
-# Set the Environment
-source "${script_dir}"/common/set_environment.sh "${TARGET}" "${BACKEND}"
+# Load environment
+source "$script_dir/common/set_environment.sh" "$TARGET" "$BACKEND"
 
-# ASK user if he really wants to update
-read -r -p "Do you really want to update "${defconfig_builroot_name}" (your current configs will be lost)? (y/n): " UPDATE
+# Confirm update
+read -r -p "Do you really want to update ${defconfig_buildroot_name}? (your current configs will be lost) (y/n): " UPDATE
 
-# Update!
 if [[ "${UPDATE,,}" =~ ^y(es)?$ ]]; then
-  # UPDATE BUILDROOT
-  echo "Updating BUILDROOT config ..."
-  echo "Updating ${defconfig_buildroot_name} ..."
+  info "Updating Buildroot config: ${defconfig_buildroot_name}"
 
-  # Modify Overlay directory according to the target
-  sed -i "/^BR2_ROOTFS_OVERLAY=/cBR2_ROOTFS_OVERLAY=\"${install_dir}\"" "${custom_buildroot_config_dir}"/"${defconfig_buildroot_name}"
-
-  # Copy custom buildroot defconfig in buildroot and configure it
-  cp "${custom_buildroot_config_dir}"/"${defconfig_buildroot_name}" "${buildroot_config_dir}"/"${defconfig_buildroot_name}"
-
-  # Configure Buildroot
-  make -C "${buildroot_dir}" "${defconfig_buildroot_name}"
-  if [[ $? -ne 0 ]]; then
-    echo "ERROR: The make command failed in configuring BUILDROOT"
+  # Adjust overlay directory in config
+  if [[ -f "$custom_buildroot_config_dir/$defconfig_buildroot_name" ]]; then
+    sed -i "/^BR2_ROOTFS_OVERLAY=/cBR2_ROOTFS_OVERLAY=\"${install_dir}\"" \
+      "$custom_buildroot_config_dir/$defconfig_buildroot_name"
+  else
+    error "Custom Buildroot config $custom_buildroot_config_dir/$defconfig_buildroot_name not found."
     exit 1
   fi
-  echo "BUILDROOT has been successfully configured"
 
-  if [[ "${UPDATE_BUSYBOX,,}" =~ ^y(es)?$ ]]; then
-    # UPDATE BUSYBOX
-    echo "Updating BUSYBOX config ..."
-    echo "Updating ${defconfig_busybox_name} ..."
+  # Copy config into buildroot tree
+  cp "$custom_buildroot_config_dir/$defconfig_buildroot_name" \
+     "$buildroot_config_dir/$defconfig_buildroot_name"
 
-    # Copy custom busybox defconfig in busybox and configure it
-    cp "${custom_busybox_config_dir}"/"${defconfig_busybox_name}" "${busybox_config_dir}"/.config
-    cp "${custom_busybox_config_dir}"/"${defconfig_busybox_name}" "${buildroot_dir}"/package/busybox/busybox.config
-
-    echo "BUSYBOX has been successfully configured"
+  # Run defconfig
+  if make -C "$buildroot_dir" "$defconfig_buildroot_name"; then
+    success "Buildroot has been successfully configured."
+  else
+    error "Buildroot configuration failed."
+    exit 1
   fi
 
-  # Start Menuconfig
-  if [[ ${MENUCFG} -eq 1 ]]; then
-    make -C "${buildroot_dir}" menuconfig 
+  # Update BusyBox if requested
+  if [[ "${UPDATE_BUSYBOX,,}" =~ ^y(es)?$ ]]; then
+    info "Updating BusyBox config: ${defconfig_busybox_name}"
+
+    if [[ -f "$custom_busybox_config_dir/$defconfig_busybox_name" ]]; then
+      cp "$custom_busybox_config_dir/$defconfig_busybox_name" "$busybox_config_dir/.config"
+      cp "$custom_busybox_config_dir/$defconfig_busybox_name" "$buildroot_dir/package/busybox/busybox.config"
+      success "BusyBox has been successfully configured."
+    else
+      error "Custom BusyBox config $custom_busybox_config_dir/$defconfig_busybox_name not found."
+    fi
+  fi
+
+  # Optionally launch menuconfig
+  if [[ $MENUCFG -eq 1 ]]; then
+    make -C "$buildroot_dir" menuconfig
   else
-    echo "Skipping Menuconfig."
+    info "Skipping menuconfig."
   fi
 else
-  echo "Skipping Update."
+  info "Skipping update."
 fi

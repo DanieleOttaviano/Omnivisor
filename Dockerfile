@@ -1,51 +1,59 @@
+# Base image
 FROM ubuntu:22.04
 
-RUN apt-get update
-
+# Non-interactive install
+ENV DEBIAN_FRONTEND=noninteractive
 ENV TZ=America/Los_Angeles
 
-RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+# Update + install base dependencies
+RUN apt-get update && apt-get install -y \
+    tzdata \
+    vim git make sed binutils diffutils python3 ninja-build build-essential \
+    curl bzip2 tar findutils unzip cmake \
+    rsync libglib2.0-dev libpixman-1-dev wget cpio bc \
+    libncurses5 libncurses5-dev flex bison openssl libssl-dev kmod \
+    python3-pip file pkg-config u-boot-tools \
+    && rm -rf /var/lib/apt/lists/*
 
-RUN apt-get install -y vim git make sed binutils diffutils python3 ninja-build build-essential curl bzip2 tar findutils unzip cmake
+# Python deps
+RUN pip3 install --no-cache-dir Mako
 
-RUN apt-get install -y rsync libglib2.0-dev libpixman-1-dev wget cpio rsync bc libncurses5 libncurses5-dev flex bison openssl libssl-dev kmod python3-pip file pkg-config rsync u-boot-tools 
+# Native cross-compilers from Ubuntu repos
+RUN apt-get update && apt-get install -y \
+    gcc-arm-none-eabi \
+    gcc-aarch64-linux-gnu \
+    && rm -rf /var/lib/apt/lists/*
 
-RUN pip3 install Mako
-
-# Install arch32 and aarch64-linux cross-compilers (Ubuntu Native)
-RUN apt-get install -y gcc-arm-none-eabi gcc-aarch64-linux-gnu
- 
-# Download and install the aarch64-none-elf cross-compiler
-RUN curl -fLo gcc-aarch64-none-eabi.tar.xz \
-    --retry 5 \
-    --retry-delay 5 \
-    --retry-connrefused \
-    "https://developer.arm.com/-/media/Files/downloads/gnu/12.2.rel1/binrel/arm-gnu-toolchain-12.2.rel1-x86_64-aarch64-none-elf.tar.xz"
-RUN mkdir -p /opt/gcc-aarch64-none-eabi
-RUN tar xf gcc-aarch64-none-eabi.tar.xz --strip-components=1 -C /opt/gcc-aarch64-none-eabi
+# Install aarch64-none-elf cross-compiler
+RUN curl -fLo /tmp/gcc-aarch64-none-eabi.tar.xz \
+      --retry 5 --retry-delay 5 --retry-connrefused \
+      "https://developer.arm.com/-/media/Files/downloads/gnu/12.2.rel1/binrel/arm-gnu-toolchain-12.2.rel1-x86_64-aarch64-none-elf.tar.xz" \
+    && mkdir -p /opt/gcc-aarch64-none-eabi \
+    && tar xf /tmp/gcc-aarch64-none-eabi.tar.xz --strip-components=1 -C /opt/gcc-aarch64-none-eabi \
+    && rm /tmp/gcc-aarch64-none-eabi.tar.xz
 ENV PATH="/opt/gcc-aarch64-none-eabi/bin:${PATH}"
 
-# Download and install the riscv32-unknown-elf- cross-compiler
-RUN curl -fLo rv32.tar.xz \
-    --retry 5 \
-    --retry-delay 5 \
-    --retry-connrefused \
-    "https://github.com/riscv-collab/riscv-gnu-toolchain/releases/download/2025.01.20/riscv32-elf-ubuntu-22.04-gcc-nightly-2025.01.20-nightly.tar.xz"
-RUN mkdir -p /opt/rv32
-RUN tar xf rv32.tar.xz --strip-components=1 -C /opt/rv32
-ENV PATH="/opt/rv32/bin:${PATH}" 
+# Install riscv32-elf cross-compiler
+RUN curl -fLo /tmp/rv32.tar.xz \
+      --retry 5 --retry-delay 5 --retry-connrefused \
+      "https://github.com/riscv-collab/riscv-gnu-toolchain/releases/download/2025.01.20/riscv32-elf-ubuntu-22.04-gcc-nightly-2025.01.20-nightly.tar.xz" \
+    && mkdir -p /opt/rv32 \
+    && tar xf /tmp/rv32.tar.xz --strip-components=1 -C /opt/rv32 \
+    && rm /tmp/rv32.tar.xz
+ENV PATH="/opt/rv32/bin:${PATH}"
 
-
+# Terminal settings + colorful prompt and aliases (for all users)
 ENV TERM=xterm-256color
+RUN echo "PS1='\[\e[1;32m\]\u\[\e[0m\]@\[\e[1;33m\]\h \[\e[1;36m\]\w \[\e[38;5;46;1m\]➜\[\e[0m\] '" >> /etc/bash.bashrc && \
+    echo "alias ls='ls --color=auto'" >> /etc/bash.bashrc && \
+    echo "alias grep='grep --color=auto'" >> /etc/bash.bashrc && \
+    echo "alias ll='ls -alF'" >> /etc/bash.bashrc && \
+    echo "alias la='ls -A'" >> /etc/bash.bashrc && \
+    echo "alias l='ls -CF'" >> /etc/bash.bashrc
 
-RUN echo "PS1='\[\e[38;5;39m\]\w\[\e[0m\] \[\e[38;5;46;1m\]>\[\e[0m\] '" >> /root/.bashrc
-
-RUN echo "source /root/.bashrc" >> /root/.profile
-
+# Default working directory
+WORKDIR /home
 ENV HOME=/home
-#RUN source /root/.bashrc
-# Set the entry point to source .bashrc and start bash
 
-CMD ["bash", "-c", "source /root/.bashrc && exec /bin/bash -il"]
-
-#RUN source /root/.bashrc
+# Default entrypoint: interactive login shell
+CMD ["bash", "-il"]

@@ -1,66 +1,75 @@
 #!/bin/bash
 
 usage() {
-  echo -e "Usage: $0 \r\n \
-  This script compile the root file system for the specified <target> and <backend>:\r\n \
-    [-t <target>]\r\n \
-    [-b <backend>]\r\n \
-    [-h help]" 1>&2
+  cat <<EOF
+$(basename "$0") - Compile Buildroot root filesystem for target/backend
+
+Usage:
+  $0 [options]
+
+Options:
+  -t, --target <val>   Target board/platform
+  -b, --backend <val>  Backend (e.g. jailhouse)
+  -h, --help           Show this help message
+EOF
   exit 1
 }
 
-# DIRECTORIES
-current_dir=$(dirname -- "$(readlink -f -- "$0")")
-script_dir=$(dirname "${current_dir}")
-source "${script_dir}"/common/common.sh
+# Directories & helpers
+curr_dir=$(dirname -- "$(readlink -f -- "$0")")
+script_dir=$(dirname "$curr_dir")
+source "$script_dir/common/common.sh"
 
-while getopts "t:b:h" o; do
-  case "${o}" in
-  t)
-    TARGET=${OPTARG}
-    ;;
-  b)
-    BACKEND=${OPTARG}
-    ;;
-  h)
-    usage
-    ;;
-  *)
-    usage
-    ;;
+# Parse args
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -t|--target)  TARGET="$2"; shift 2 ;;
+    -b|--backend) BACKEND="$2"; shift 2 ;;
+    -h|--help)    usage ;;
+    *) error "Unknown option: $1"; usage ;;
   esac
 done
-shift $((OPTIND - 1))
 
-# Set the Environment
-source "${script_dir}"/common/set_environment.sh "${TARGET}" "${BACKEND}"
+# Load environment
+source "$script_dir/common/set_environment.sh" "$TARGET" "$BACKEND"
+
+# Check tools
+for tool in make tar; do
+  if ! command -v "$tool" >/dev/null 2>&1; then
+    error "Required tool '$tool' not found in PATH."
+    exit 1
+  fi
+done
 
 # Compile buildroot
-make -C "${buildroot_dir}" -j"$(nproc)"
-if [[ $? -ne 0 ]]; then
-  echo "ERROR: The make command failed during the compilation of BUILDROOT"
+info "Compiling Buildroot in $buildroot_dir ..."
+if make -C "$buildroot_dir" -j"$(nproc)"; then
+  success "BUILDROOT has been successfully compiled."
+else
+  error "Buildroot compilation failed."
   exit 1
 fi
-echo "BUILDROOT has been successfully compiled"
 
-# Copy rootfs in rootcell
-cp ${rootfs_image_dir}/* ${rootfs_dir}/
+# Copy rootfs image into rootfs directory
+info "Copying rootfs images ..."
+cp "$rootfs_image_dir"/* "$rootfs_dir"/
 
-# Export the rootfs.tar into the target directory
-if [ ! -d "${rootfs_dir}/${TARGET}/" ]; then
-  mkdir -p "${rootfs_dir}/${TARGET}/"
-fi
+# Export rootfs.tar into target directory
+target_rootfs_dir="$rootfs_dir/$TARGET"
+mkdir -p "$target_rootfs_dir"
 
-# Check if the directory is empty
-if [ -z "$(ls -A "${rootfs_dir}/${TARGET}/")" ]; then
-  tar -xvf "${rootfs_dir}/rootfs.tar" -C "${rootfs_dir}/${TARGET}/"
+if [[ -z "$(ls -A "$target_rootfs_dir")" ]]; then
+  info "Extracting rootfs.tar into $target_rootfs_dir"
+  tar -xf "$rootfs_dir/rootfs.tar" -C "$target_rootfs_dir"
 else
-  echo "The directory ${rootfs_dir}/${TARGET}/ is not empty. Moving content to ${rootfs_dir}/OLD_${TARGET} and extracting."
-  if [ -d "${rootfs_dir}/OLD_${TARGET}" ]; then
-    echo "The directory ${rootfs_dir}/OLD_${TARGET} already exists. Removing it..."
-    rm -rf "${rootfs_dir}/OLD_${TARGET}"
-  fi
-  mv "${rootfs_dir}/${TARGET}/" "${rootfs_dir}/OLD_${TARGET}" 
-  mkdir -p "${rootfs_dir}/${TARGET}/"
-  tar -xvf "${rootfs_dir}/rootfs.tar" -C "${rootfs_dir}/${TARGET}/"
+  warn "Directory $target_rootfs_dir is not empty."
+  backup_dir="$rootfs_dir/OLD_${TARGET}_$(date +%Y%m%d_%H%M%S)"
+  warn "Moving existing content to $backup_dir"
+  mv "$target_rootfs_dir" "$backup_dir"
+  mkdir -p "$target_rootfs_dir"
+  info "Extracting rootfs.tar into fresh $target_rootfs_dir"
+  tar -xf "$rootfs_dir/rootfs.tar" -C "$target_rootfs_dir"
 fi
+
+success "Buildroot rootfs prepared for target: $TARGET"
+

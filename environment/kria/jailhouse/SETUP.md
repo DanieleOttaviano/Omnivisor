@@ -31,9 +31,9 @@ Only after that we can rewrite the sd card with the other artifacts produced wit
   - Insert the SD card into the Kria board.
   - Connect the board to a power source and to the PC using the uart.
   - Power on the board.
-  - Connect to the uart using minicom (or picocom).
+  - Connect to the uart using picocom (or minicom).
     ```sh
-    sudo minicom -D /dev/ttyUSB1 
+    sudo picocom -b 115200 /dev/ttyUSB1
     ```
 
 ## Build The Environment
@@ -41,7 +41,7 @@ Launch the build_environment.sh script to generate the needed artifacts.
 
   - Enter the docker container.
 ```sh
-  docker run -it --rm --user $(id -u):$(id -g) -v /etc/passwd:/etc/passwd:ro --net=host --name env_builder_container -v ${PWD}:/home -w="/home" runphi_env_builder /bin/bash
+  make run
 ```
   - Launch the build.
 ```sh 
@@ -51,7 +51,7 @@ Launch the build_environment.sh script to generate the needed artifacts.
 ## Load BOOT.BIN into QSPI
 
 To chage the BOOT.BIN into the QSPI memory, we can use the xmutil applicaiton in the Ubuntu image we loaded 
-(see https://xilinx-wiki.atlassian.net/wiki/spaces/A/pages/3020685316/Kria+SOM+Boot+Firmware+Update).
+(see [Kria_SOM_Boot_Firmware_Update](https://xilinx-wiki.atlassian.net/wiki/spaces/A/pages/3020685316/Kria+SOM+Boot+Firmware+Update) for further information).
 
 Copy the BOOT.BIN generated in the target platform:
 ```sh
@@ -62,13 +62,19 @@ In the platform launch the following command after coping the correct BOOT.BIN g
 ```sh
 sudo xmutil bootfw_update -i <path to boot.bin>
 ```
+
 The system has a backup firmware management with two separated system called A and B. 
 Using the following command you should see that the loaded firmware will be the next to be booted: 
 ```sh
 sudo xmutil bootfw_status
 ```
 
-Then reboot the board, if the atf and u-boot are correctly loaded you need to save it before the next reboot.
+Then reboot the board:
+```sh
+sudo reboot
+```
+
+If the atf and u-boot are correctly loaded you need to save it before the next reboot.
 Login into the Ubuntu image of the kria again and launch the following command to do it:
 ```sh
 sudo xmutil bootfw_update -v

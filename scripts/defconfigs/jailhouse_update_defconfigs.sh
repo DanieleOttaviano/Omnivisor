@@ -1,64 +1,61 @@
 #!/bin/bash
 
 usage() {
-  echo -e "Usage: $0 \r\n \
-  This script updates the jailhouse configurations of the selected environment:\r\n \
-    [-m launch menuconfig after update]\r\n \
-    [-t <target>]\r\n \
-    [-b <backend>]\r\n \
-    [-h help]" 1>&2
+  cat <<EOF
+$(basename "$0") - Update Jailhouse configuration for the selected environment
+
+Usage:
+  $0 [options]
+
+Options:
+  -m, --menuconfig     Attempt to launch menuconfig after update (not supported)
+  -t, --target <val>   Target board/platform
+  -b, --backend <val>  Backend (e.g. jailhouse)
+  -h, --help           Show this help message
+EOF
   exit 1
 }
 
-# DIRECTORIES
+# Directories & helpers
 current_dir=$(dirname -- "$(readlink -f -- "$0")")
-script_dir=$(dirname "${current_dir}")
-source "${script_dir}"/common/common.sh
+script_dir=$(dirname "$current_dir")
+source "$script_dir/common/common.sh"
 
-# By default no menuconfig
 MENUCFG=0
 
-while getopts "mt:b:h" o; do
-  case "${o}" in
-  m)
-    MENUCFG=1
-    ;;
-  t)
-    TARGET=${OPTARG}
-    ;;
-  b)
-    BACKEND=${OPTARG}
-    ;;
-  h)
-    usage
-    ;;
-  *)
-    usage
-    ;;
+# Parse args
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -m|--menuconfig) MENUCFG=1; shift ;;
+    -t|--target)     TARGET="$2"; shift 2 ;;
+    -b|--backend)    BACKEND="$2"; shift 2 ;;
+    -h|--help)       usage ;;
+    *) error "Unknown option: $1"; usage ;;
   esac
 done
-shift $((OPTIND - 1))
 
-# Set the Environment
-source "${script_dir}"/common/set_environment.sh "${TARGET}" "${BACKEND}"
+# Load environment
+source "$script_dir/common/set_environment.sh" "$TARGET" "$BACKEND"
 
-# ASK user if he really wants to update
-read -r -p "Do you really want to update "${defconfig_jailhouse_name}" (your current configs will be lost)? (y/n): " UPDATE
+# Confirm update
+read -r -p "Do you really want to update ${defconfig_jailhouse_name}? (your current configs will be lost) [y/N]: " UPDATE
+if [[ ! "${UPDATE,,}" =~ ^y(es)?$ ]]; then
+  warn "Cancelled. Jailhouse config not updated."
+  exit 0
+fi
 
-# Update!
-if [[ "${UPDATE,,}" =~ ^y(es)?$ ]]; then
-  # UPDATE JAILHOUSE
-  echo "Updating JAILHOUSE config ..."
-  # Copy custom jailhouse config.h in jailhouse and configure it
-  cp "${custom_jailhouse_config_dir}"/"${defconfig_jailhouse_name}" "${jailhouse_config_dir}"/config.h
-  echo "JAILHOUSE "${defconfig_jailhouse_name}"-> config.h has been successfully updated"
-
-  # Start Menuconfig
-  if [[ ${MENUCFG} -eq 1 ]]; then
-    echo "menuconfig is not available for jailhouse."
-  else
-    echo "Skipping Menuconfig."
-  fi
+# Perform update
+if [[ -f "$custom_jailhouse_config_dir/$defconfig_jailhouse_name" ]]; then
+  cp "$custom_jailhouse_config_dir/$defconfig_jailhouse_name" "$jailhouse_config_dir/config.h"
+  success "Jailhouse config updated: ${defconfig_jailhouse_name} -> config.h"
 else
-  echo "Skipping Update."
+  error "Custom config not found: $custom_jailhouse_config_dir/$defconfig_jailhouse_name"
+  exit 1
+fi
+
+# Menuconfig handling
+if [[ $MENUCFG -eq 1 ]]; then
+  warn "menuconfig is not available for Jailhouse."
+else
+  info "Skipping menuconfig."
 fi

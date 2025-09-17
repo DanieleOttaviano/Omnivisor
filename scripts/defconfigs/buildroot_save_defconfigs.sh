@@ -1,74 +1,87 @@
 #!/bin/bash
 
 usage() {
-  echo -e "Usage: $0 \r\n \
-  This script saves the buildroot configuration of the selected environment:\r\n \ 
-    [-t <target>]\r\n \
-    [-b <backend>]\r\n \
-    [-x save also busybox config]\r\n \
-    [-h help]" 1>&2
+  cat <<EOF
+$(basename "$0") - Save Buildroot (and optionally BusyBox) configuration
+
+Usage:
+  $0 [options]
+
+Options:
+  -t, --target <val>    Target board/platform
+  -b, --backend <val>   Backend (e.g. jailhouse)
+  -x, --busybox         Save BusyBox config as well
+  -h, --help            Show this help message
+EOF
   exit 1
 }
 
-# DIRECTORIES
-current_dir=$(dirname -- "$(readlink -f -- "$0")")
-script_dir=$(dirname "${current_dir}")
-source "${script_dir}"/common/common.sh
+# Directories & helpers
+curr_dir=$(dirname -- "$(readlink -f -- "$0")")
+script_dir=$(dirname "$curr_dir")
+source "$script_dir/common/common.sh"
 
-SAVE_BUSYBOX=n
+SAVE_BUSYBOX="n"
 
-while getopts "t:b:xh" o; do
-  case "${o}" in
-  t)
-    TARGET=${OPTARG}
-    ;;
-  b)
-    BACKEND=${OPTARG}
-    ;;
-  x)
-    SAVE_BUSYBOX=y
-    ;;
-  h)
-    usage
-    ;;
-  *)
-    usage
-    ;;
+# Parse args
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -t|--target)  TARGET="$2"; shift 2 ;;
+    -b|--backend) BACKEND="$2"; shift 2 ;;
+    -x|--busybox) SAVE_BUSYBOX="y"; shift ;;
+    -h|--help)    usage ;;
+    *) error "Unknown option: $1"; usage ;;
   esac
 done
-shift $((OPTIND - 1))
 
-# Set the Environment
-source "${script_dir}"/common/set_environment.sh "${TARGET}" "${BACKEND}"
+# Load environment
+source "$script_dir/common/set_environment.sh" "$TARGET" "$BACKEND"
 
-read -r -p "Do you really want to save "${defconfig_builroot_name}" (if already exist it will be overwritten)? (y/n): " SAVE
+# Confirm save
+read -r -p "Do you really want to save ${defconfig_buildroot_name}? (existing file will be overwritten) (y/n): " SAVE
 
-# Save!
 if [[ "${SAVE,,}" =~ ^y(es)?$ ]]; then
-  echo "Saving BUILDROOT config ..."
-  echo "saving ${defconfig_buildroot_name} ..."
+  info "Saving Buildroot config: ${defconfig_buildroot_name}"
 
-  # Save old
-  cp "${custom_buildroot_config_dir}"/"${defconfig_buildroot_name}" "${custom_buildroot_config_dir}"/"${defconfig_buildroot_name}"_old
+  # Save old if exists
+  if [[ -f "$custom_buildroot_config_dir/$defconfig_buildroot_name" ]]; then
+    cp "$custom_buildroot_config_dir/$defconfig_buildroot_name" \
+       "$custom_buildroot_config_dir/${defconfig_buildroot_name}_old"
+    warn "Previous Buildroot config saved as ${defconfig_buildroot_name}_old"
+  fi
 
-  # Save buildroot defconfig
-  make -C ${buildroot_dir} savedefconfig BR2_DEFCONFIG="${buildroot_config_dir}"/"${defconfig_buildroot_name}"
-  if [[ $? -ne 0 ]]; then
-    echo "ERROR: The make command failed during the savedefconfig of BUILDROOT"
+  # Check tool
+  if ! command -v make >/dev/null 2>&1; then
+    error "make not found in PATH"
     exit 1
   fi
-  echo "BUILDROOT defconfig has been successfully saved"
 
-  cp "${buildroot_config_dir}"/"${defconfig_buildroot_name}" "${custom_buildroot_config_dir}"/
+  # Save buildroot defconfig
+  if make -C "$buildroot_dir" savedefconfig BR2_DEFCONFIG="$buildroot_config_dir/$defconfig_buildroot_name"; then
+    cp "$buildroot_config_dir/$defconfig_buildroot_name" "$custom_buildroot_config_dir/"
+    success "Buildroot defconfig saved successfully."
+  else
+    error "Failed to save Buildroot defconfig."
+    exit 1
+  fi
+else
+  info "Skipping Buildroot config save."
 fi
 
+# Optionally save BusyBox config
 if [[ "${SAVE_BUSYBOX,,}" =~ ^y(es)?$ ]]; then
-  echo "Saving BUSYBOX config ..."
-  echo "saving ${defconfig_busybox_name} ..."
+  info "Saving BusyBox config: ${defconfig_busybox_name}"
 
-  # Save old
-  cp "${custom_busybox_config_dir}"/"${defconfig_busybox_name}" "${custom_busybox_config_dir}"/"${defconfig_busybox_name}"_old
+  if [[ -f "$custom_busybox_config_dir/$defconfig_busybox_name" ]]; then
+    cp "$custom_busybox_config_dir/$defconfig_busybox_name" \
+       "$custom_busybox_config_dir/${defconfig_busybox_name}_old"
+    warn "Previous BusyBox config saved as ${defconfig_busybox_name}_old"
+  fi
 
-  # Save busybox defconfig
-  cp "${busybox_config_dir}"/.config "${custom_busybox_config_dir}"/"${defconfig_busybox_name}"
+  if [[ -f "$busybox_config_dir/.config" ]]; then
+    cp "$busybox_config_dir/.config" "$custom_busybox_config_dir/$defconfig_busybox_name"
+    success "BusyBox config saved successfully."
+  else
+    error "BusyBox .config not found in $busybox_config_dir"
+  fi
 fi

@@ -1,22 +1,26 @@
 #!/bin/bash
-#WARNING: the script need a defined ${script_dir}
+# WARNING: the script needs ${script_dir} defined before sourcing
 
-## Printing preferences
-info='\033[0;33m'
-warn='\033[0;31m'
-norm='\033[0m'
+# --- Color codes ---
+RED='\033[0;31m'
+YELLOW='\033[0;33m'
+GREEN='\033[1;32m'
+CYAN='\033[1;36m'
+RESET='\033[0m'
 
-## DIRECTORIES ##
-# PROJECT
+# --- Print helpers ---
+info()    { echo -e "${CYAN}[INFO]${RESET}    $*"; }
+success() { echo -e "${GREEN}[OK]${RESET}      $*"; }
+warn()    { echo -e "${YELLOW}[WARN]${RESET}    $*"; }
+error()   { echo -e "${RED}[ERROR]${RESET}   $*" >&2; }
+
+# --- Directories ---
 project_dir=$(dirname "${script_dir:?"script_dir is not defined!"}")
-# ENVIRONMENT
 environment_dir=${project_dir}/environment
-# runPHI
-#runPHI_dir=${project_dir}/runPHI/target
-## VARIABLES ##
+
+# --- Variables ---
 ENVIRONMENTS_LIST=${environment_dir}/environments.txt
 TARGET=""
-# To Build (Default="n") to remove ...
 QEMU_BUILD="n"
 ATF_BUILD="n"
 UBOOT_BUILD="n"

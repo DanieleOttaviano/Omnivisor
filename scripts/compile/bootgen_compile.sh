@@ -1,51 +1,59 @@
 #!/bin/bash
 
 usage() {
-  echo -e "Usage: $0 \r\n \
-  This script compile the bootgen project for the specified <target> and <backend>:\r\n \
-    [-t <target>]\r\n \
-    [-b <backend>]\r\n \
-    [-h help]" 1>&2
+  cat <<EOF
+$(basename "$0") - Compile bootgen and generate BOOT.BIN
+
+Usage:
+  $0 [options]
+
+Options:
+  -t, --target <val>   Target board/platform
+  -b, --backend <val>  Backend (e.g. jailhouse)
+  -h, --help           Show this help message
+EOF
   exit 1
 }
 
-# DIRECTORIES
+# Directories & helpers
 current_dir=$(dirname -- "$(readlink -f -- "$0")")
-script_dir=$(dirname "${current_dir}")
-source "${script_dir}"/common/common.sh
+script_dir=$(dirname "$current_dir")
+source "$script_dir/common/common.sh"
 
 PLATFORM="zynqmp"
 
-while getopts "t:b:h" o; do
-  case "${o}" in
-  t)
-    TARGET=${OPTARG}
-    ;;
-  b)
-    BACKEND=${OPTARG}
-    ;;
-  h)
-    usage
-    exit 1
-    ;;
-  *)
-    usage
-    ;;
+# Parse args
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -t|--target)  TARGET="$2"; shift 2 ;;
+    -b|--backend) BACKEND="$2"; shift 2 ;;
+    -h|--help)    usage ;;
+    *) error "Unknown option: $1"; usage ;;
   esac
 done
-shift $((OPTIND - 1))
 
-# Set the Environment
-source "${script_dir}"/common/set_environment.sh "${TARGET}" "${BACKEND}"
+# Load environment
+source "$script_dir/common/set_environment.sh" "$TARGET" "$BACKEND"
 
 # Compile bootgen
-make -C "${bootgen_dir}"
-if [[ $? -ne 0 ]]; then
-  echo "ERROR: The make command failed during the compilation of BOOTGEN"
+info "Compiling BOOTGEN..."
+if make -C "$bootgen_dir"; then
+  success "BOOTGEN compiled successfully."
+else
+  error "BOOTGEN compilation failed."
   exit 1
 fi
-echo "BOOTGEN has been successfully compiled"
 
-# Use bootgen to generate BOOT.BIN for the target
-cd "${boot_dir}" || exit 1
-"${bootgen_dir}"/bootgen -arch "${PLATFORM}" -image bootgen.bif -w -o BOOT.BIN
+# Generate BOOT.BIN
+info "Generating BOOT.BIN for platform: $PLATFORM"
+if cd "$boot_dir"; then
+  if "$bootgen_dir/bootgen" -arch "$PLATFORM" -image bootgen.bif -w -o BOOT.BIN; then
+    success "BOOT.BIN generated successfully in $boot_dir"
+  else
+    error "Failed to generate BOOT.BIN"
+    exit 1
+  fi
+else
+  error "Cannot access boot directory: $boot_dir"
+  exit 1
+fi

@@ -1,49 +1,47 @@
 #!/bin/bash
 
 usage() {
-  echo -e "Usage: $0 \r\n \
-  This script compile the arm trust firmware for the specified <target> and <backend>:\r\n \
-    [-t <target>]\r\n \
-    [-b <backend>]\r\n \
-    [-h help]" 1>&2
+  cat <<EOF
+$(basename "$0") - Compile ARM Trusted Firmware for a target/backend
+
+Usage:
+  $0 -t <target> -b <backend>
+
+Options:
+  -t, --target <target>     Target board/platform
+  -b, --backend <backend>   Backend (e.g. jailhouse)
+  -h, --help                Show this help message
+EOF
   exit 1
 }
 
-# DIRECTORIES
+# Directories & helpers
 current_dir=$(dirname -- "$(readlink -f -- "$0")")
-script_dir=$(dirname "${current_dir}")
-source "${script_dir}"/common/common.sh
+script_dir=$(dirname "$current_dir")
+source "$script_dir/common/common.sh"
 
 PLATFORM="zynqmp"
 
-while getopts "t:b:h" o; do
-  case "${o}" in
-  t)
-    TARGET=${OPTARG}
-    ;;
-  b)
-    BACKEND=${OPTARG}
-    ;;
-  h)
-    usage
-    ;;
-  *)
-    usage
-    ;;
+# Parse arguments
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -t|--target) TARGET="$2"; shift 2 ;;
+    -b|--backend) BACKEND="$2"; shift 2 ;;
+    -h|--help) usage ;;
+    *) error "Unknown option: $1"; usage ;;
   esac
 done
-shift $((OPTIND - 1))
 
-# Set the Environment
-source "${script_dir}"/common/set_environment.sh "${TARGET}" "${BACKEND}"
+# Load environment
+source "$script_dir/common/set_environment.sh" "$TARGET" "$BACKEND"
 
-# Compile atf
-make -C "${atf_dir}" CROSS_COMPILE="${CROSS_COMPILE}" PLAT="${PLATFORM}" bl31 -j"$(nproc)"
-if [[ $? -ne 0 ]]; then
-  echo "ERROR: The make command failed during the compilation of ATF"
+# Compile ATF
+if ! make -C "$atf_dir" CROSS_COMPILE="$CROSS_COMPILE" PLAT="$PLATFORM" bl31 -j"$(nproc)"; then
+  error "The make command failed during the compilation of ATF."
   exit 1
 fi
-echo "ATF has been successfully compiled"
 
-# Copy atf in the boot directory
-cp "${atf_image_dir}"/bl31.elf "${boot_dir}"/
+success "ATF has been successfully compiled"
+
+# Copy output to boot directory
+cp "$atf_image_dir/bl31.elf" "$boot_dir/"

@@ -1,170 +1,142 @@
 #!/bin/bash
 
 usage() {
-  echo -e "Usage: $0 \r\n \
-  This script compile the jailhouse hypervisor:\r\n \
-    [-r <remote core> compile rCPU code demo and libraries (all, armr5, riscv32)]\r\n \
-    [-B <benchmark name> for Taclebench demo]\r\n \
-    [-n install jailhouse in the NFS directory]\r\n \
-    [-i install jailhouse in the install directory]\r\n \
-    [-t <target>]\r\n \
-    [-b <backend>]\r\n \
-    [-h help]" 1>&2
+  cat <<EOF
+$(basename "$0") - Compile and install the Jailhouse hypervisor
+
+Usage:
+  $0 [options]
+
+Options:
+  -r, --rcpu <core>       Compile RCPU demo (all, armr5, riscv32)
+  -B, --bench <name>      Benchmark name for Taclebench demo
+  -n, --nfs-install       Install Jailhouse in the NFS directory
+  -i, --overlay-install   Install Jailhouse in the overlay directory
+  -t, --target <val>      Target board/platform
+  -b, --backend <val>     Backend (e.g. jailhouse)
+  -h, --help              Show this help message
+EOF
   exit 1
 }
 
-# DIRECTORIES
+# Directories & helpers
 current_dir=$(dirname -- "$(readlink -f -- "$0")")
-script_dir=$(dirname "${current_dir}")
-source "${script_dir}"/common/common.sh
+script_dir=$(dirname "$current_dir")
+source "$script_dir/common/common.sh"
 
+# Defaults
 INSTALL_OVERLAY="n"
 INSTALL_NFS="n"
 RCPU_COMPILE="n"
-
-#Benchmark name
+REMOTE_COMPILE_R5="arm-none-eabi-"
+REMOTE_COMPILE_RV32="riscv32-unknown-elf-"
 BENCHNAME=""
 RCPUs=""
 CORE=""
 
-while getopts "r:B:nit:b:h" o; do
-  case "${o}" in
-  n)
-    INSTALL_NFS="Y"
-    ;;
-  i)
-    INSTALL_OVERLAY="Y"
-    ;;
-  r)
-    RCPU_COMPILE="Y"  
-    RCPUs=${OPTARG}
-    ;;
-  B)
-    BENCHNAME=${OPTARG}
-    ;;
-  t)
-    TARGET=${OPTARG}
-    ;;
-  b)
-    BACKEND=${OPTARG}
-    ;;
-  h)
-    usage
-    ;;
-  *)
-    usage
-    ;;
+# Parse arguments
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -r|--rcpu)    RCPU_COMPILE="y"; RCPUs="$2"; shift 2 ;;
+    -B|--bench)   BENCHNAME="$2"; shift 2 ;;
+    -n|--nfs-install) INSTALL_NFS="y"; shift ;;
+    -i|--overlay-install) INSTALL_OVERLAY="y"; shift ;;
+    -t|--target)  TARGET="$2"; shift 2 ;;
+    -b|--backend) BACKEND="$2"; shift 2 ;;
+    -h|--help)    usage ;;
+    *) error "Unknown option: $1"; usage ;;
   esac
 done
-shift $((OPTIND - 1))
 
-# Set the Environment
-source "${script_dir}"/common/set_environment.sh "${TARGET}" "${BACKEND}"
+# Load environment
+source "$script_dir/common/set_environment.sh" "$TARGET" "$BACKEND"
 
-# Always copy configs, custom dts, custom cells, and custom inmates before builing Jailhouse
-#cp "${custom_jailhouse_cell_dir}"/dts/*.dts "${jailhouse_cell_dir}"/dts/
-cp -r "${custom_jailhouse_cell_dir}"/* "${jailhouse_cell_dir}"
-cp -r "${custom_jailhouse_inmate_demos_dir}"/* "${jailhouse_inmate_demos_dir}"
+# Always copy configs and inmates before building
+cp -r "$custom_jailhouse_cell_dir"/* "$jailhouse_cell_dir"
+cp -r "$custom_jailhouse_inmate_demos_dir"/* "$jailhouse_inmate_demos_dir"
 
-# Compile jailhouse (INPUT: kernel directory, installation directory)
-make -C "${jailhouse_dir}" ARCH="${ARCH}" CROSS_COMPILE="${CROSS_COMPILE}" KDIR="${linux_dir}" #ARCH=arm64 CROSS_COMPILE=${aarch64_buildroot_linux_gnu_dir}/aarch64-buildroot-linux-gnu-
-if [[ $? -ne 0 ]]; then
-  echo "ERROR: The make command failed during the compilation of JAILHOUSE"
+# Compile Jailhouse
+if ! make -C "$jailhouse_dir" ARCH="$ARCH" CROSS_COMPILE="$CROSS_COMPILE" KDIR="$linux_dir"; then
+  error "Failed to compile Jailhouse"
   exit 1
-else
-  echo "JAILHOUSE has been successfully compiled"
 fi
+success "Jailhouse compiled successfully."
 
 # Compile RCPU demo
-if [[ "${RCPU_COMPILE,,}" =~ ^y(es)?$ ]]; then
-  # Check remote core
-  if [[ "${RCPUs}" == "all" ]]; then
-    CORE=""
-  elif [[ "${RCPUs}" == "armr5" ]]; then
-    CORE="_armr5"
-  elif [[ "${RCPUs}" == "riscv32" ]]; then
-    CORE="_riscv32"
-  else
-    echo "ERROR: Invalid remote core specified. try 'all', 'armr5' or 'riscv32'"
+if [[ "$RCPU_COMPILE" == "y" ]]; then
+  case "$RCPUs" in
+    all) CORE="" ;;
+    armr5) CORE="_armr5" ;;
+    riscv32) CORE="_riscv32" ;;
+    *) error "Invalid remote core: $RCPUs (use: all, armr5, riscv32)"; exit 1 ;;
+  esac
+
+  make -C "$jailhouse_dir" clean-remote$CORE REMOTE_COMPILE="$REMOTE_COMPILE_R5"
+  if ! make -C "$jailhouse_dir" remote$CORE REMOTE_COMPILE="$REMOTE_COMPILE_R5" BENCH="$BENCHNAME"; then
+    error "Failed to compile Jailhouse RCPU demo ($RCPUs)"
     exit 1
   fi
-  # clean and compile
-  make -C "${jailhouse_dir}" clean-remote${CORE} REMOTE_COMPILE="${REMOTE_COMPILE}" 
-  make -C "${jailhouse_dir}" remote${CORE} REMOTE_COMPILE="${REMOTE_COMPILE}" BENCH=${BENCHNAME} 
-  
-  if [[ $? -ne 0 ]]; then
-    echo "ERROR: The make command failed during the compilation of JAILHOUSE RPU demo"
-    exit 1
-  else
-    echo "JAILHOUSE ${RCPUs} DEMO has been successfully compiled"
-  fi
+  success "Jailhouse RCPU demo ($RCPUs) compiled successfully."
 else
-  echo "Skipping compiling JAILHOUSE RCPUs DEMO"
+  info "Skipping RCPU demo compilation."
 fi
 
-# Install Jailhouse in the NFS directory
-if [[ "${INSTALL_NFS,,}" =~ ^y(es)?$ ]]; then
-  make -C "${jailhouse_dir}" ARCH="${ARCH}" CROSS_COMPILE="${CROSS_COMPILE}" KDIR="${linux_dir}" DESTDIR="${rootfs_dir}/${TARGET}" install 
-  if [[ $? -ne 0 ]]; then
-    echo "ERROR: The make command failed during the installation of JAILHOUSE in the NFS directory"
+# Install Jailhouse in NFS root
+if [[ "$INSTALL_NFS" == "y" ]]; then
+  if ! make -C "$jailhouse_dir" ARCH="$ARCH" CROSS_COMPILE="$CROSS_COMPILE" \
+    KDIR="$linux_dir" DESTDIR="$rootfs_dir/$TARGET" install; then
+    error "Failed to install Jailhouse in NFS directory"
     exit 1
   fi
-  cp -rf "${jailhouse_dir}" "${rootfs_dir}/${TARGET}/root/" > /dev/null 2>&1
 
-  # Copy the remote core demos elf files in the lib/firmware directory
-  if [[ "$RCPUs" == "all" || "$RCPUs" == "armr5" ]]; then
-    cp "${jailhouse_dir}"/inmates/demos/armr5/src*/*.elf "${rootfs_dir}/${TARGET}/lib/firmware/"
-  fi
-  if [[ "$RCPUs" == "all" || "$RCPUs" == "riscv32" ]]; then
-    cp "${jailhouse_dir}"/inmates/demos/riscv/src*/*.elf "${rootfs_dir}/${TARGET}/lib/firmware/"
-  fi
+  cp -rf "$jailhouse_dir" "$rootfs_dir/$TARGET/root/" >/dev/null 2>&1
 
-  # Jailhouse should install pyjailhouse in the libexec/jailhouse directory but it doesn't. So lets do it manually
-  echo "moving pyjailhouse in the right directory..."
-  pyjailhouse_path=$(find "${rootfs_dir}/${TARGET}/usr/local/lib" -type d -name "pyjailhouse")
-  cp -r "${pyjailhouse_path}" "${rootfs_dir}/${TARGET}/usr/local/libexec/jailhouse"
-  # fi
+  [[ "$RCPUs" == "all" || "$RCPUs" == "armr5" ]] && \
+    cp "$jailhouse_dir"/inmates/demos/armr5/src*/*.elf "$rootfs_dir/$TARGET/lib/firmware/"
+  [[ "$RCPUs" == "all" || "$RCPUs" == "riscv32" ]] && \
+    cp "$jailhouse_dir"/inmates/demos/riscv/src*/*.elf "$rootfs_dir/$TARGET/lib/firmware/"
 
-  echo "JAILHOUSE has been successfully installed in the NFS directory!"
+  # Fix pyjailhouse install path
+  info "Relocating pyjailhouse..."
+  pyjailhouse_path=$(find "$rootfs_dir/$TARGET/usr/local/lib" -type d -name "pyjailhouse")
+  cp -r "$pyjailhouse_path" "$rootfs_dir/$TARGET/usr/local/libexec/jailhouse"
+
+  success "Jailhouse installed in NFS directory."
 else
-  echo "Skipping installation ..."
+  info "Skipping NFS installation."
 fi
 
-# Install Jailhouse in the overlay filesystem
-if [[ "${INSTALL_OVERLAY,,}" =~ ^y(es)?$ ]]; then
-  make -C "${jailhouse_dir}" ARCH="${ARCH}" CROSS_COMPILE="${CROSS_COMPILE}" KDIR="${linux_dir}" DESTDIR="${project_dir}"/install install #ARCH=arm64 CROSS_COMPILE=${aarch64_buildroot_linux_gnu_dir}/aarch64-buildroot-linux-gnu-
-  if [[ $? -ne 0 ]]; then
-    echo "ERROR: The make command failed during the installation of JAILHOUSE"
+# Install Jailhouse in overlay
+if [[ "$INSTALL_OVERLAY" == "y" ]]; then
+  if ! make -C "$jailhouse_dir" ARCH="$ARCH" CROSS_COMPILE="$CROSS_COMPILE" \
+    KDIR="$linux_dir" DESTDIR="$project_dir/install" install; then
+    error "Failed to install Jailhouse in overlay"
     exit 1
   fi
-  echo "JAILHOUSE has been successfully installed in the install directory!"
 
-  # Copy the remote core demos elf files in the lib/firmware directory
-  if [[ "$RCPUs" == "all" || "$RCPUs" == "armr5" ]]; then
-    cp "${jailhouse_dir}"/inmates/demos/armr5/src*/*.elf "${install_dir}/lib/firmware/"
-  fi
-  if [[ "$RCPUs" == "all" || "$RCPUs" == "riscv32" ]]; then
-    cp "${jailhouse_dir}"/inmates/demos/riscv/src*/*.elf "${install_dir}/lib/firmware/"
-  fi
+  # Remote core demos
+  [[ "$RCPUs" == "all" || "$RCPUs" == "armr5" ]] && \
+    cp "$jailhouse_dir"/inmates/demos/armr5/src*/*.elf "$install_dir/lib/firmware/"
+  [[ "$RCPUs" == "all" || "$RCPUs" == "riscv32" ]] && \
+    cp "$jailhouse_dir"/inmates/demos/riscv/src*/*.elf "$install_dir/lib/firmware/"
 
-  # Create overlay directory structure
-  mkdir -p "${install_dir}"/root/inmates/demos/linux
-  mkdir -p "${install_dir}"/root/configs/dts
+  # Overlay structure
+  mkdir -p "$install_dir/root/inmates/demos/linux"
+  mkdir -p "$install_dir/root/configs/dts"
+  cp "$jailhouse_dir"/configs/arm64/*.cell "$install_dir/root/configs"
+  cp "$jailhouse_dir"/configs/arm64/dts/*.dtb "$install_dir/root/configs/dts"
+  cp "$jailhouse_dir"/inmates/demos/arm64/*.bin "$install_dir/root/inmates/demos"
 
-  # Copy compiled cell, compiled device tree, demos bin, in the final rootfs
-  cp "${jailhouse_dir}"/configs/arm64/*.cell "${install_dir}"/root/configs
-  cp "${jailhouse_dir}"/configs/arm64/dts/*.dtb "${install_dir}"/root/configs/dts
-  cp "${jailhouse_dir}"/inmates/demos/arm64/*.bin "${install_dir}"/root/inmates/demos
-
-  # Jailhouse should install pyjailhouse in the libexec/jailhouse directory but it doesn't. So lets do it manually
-  if [ -d "${install_dir}/usr/local/libexec/jailhouse/pyjailhouse" ]; then
-    echo "pyjailhouse is already in the right directory"
+  # Fix pyjailhouse
+  if [[ -d "$install_dir/usr/local/libexec/jailhouse/pyjailhouse" ]]; then
+    success "pyjailhouse already in place."
   else
-    echo "moving pyjailhouse in the right directory..."
-    pyjailhouse_path=$(find "${install_dir}" -type d -name "pyjailhouse")
-    mv "${pyjailhouse_path}" "${install_dir}"/usr/local/libexec/jailhouse
+    info "Relocating pyjailhouse..."
+    pyjailhouse_path=$(find "$install_dir" -type d -name "pyjailhouse")
+    mv "$pyjailhouse_path" "$install_dir/usr/local/libexec/jailhouse"
   fi
 
+  success "Jailhouse installed in overlay directory."
 else
-  echo "Skipping installation ..."
+  info "Skipping overlay installation."
 fi

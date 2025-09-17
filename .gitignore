@@ -4,6 +4,7 @@ build/*
 .bash_history
 .lesshst
 .viminfo
+.ssh
 environment/*/*/build/**
 environment/*/*/output/boot/Image
 environment/*/*/output/rootfs/*
@@ -12,4 +13,6 @@ environment/*/*/install/lib/firmware/RPU-demo-*
 environment/*/*/install/root/tests/test_omnivisor_guest/experiments/boot_exp/inmates/RPU/*
 environment/*/*/install/root/tests/test_omnivisor_guest/experiments/boot_exp/inmates/APU/*
 environment/*/*/install/root/tests/test_omnivisor_guest/experiments/boot_exp/inmates/RISCV/*
-**/current_environment.sh
+environment/.build_env
+log
+**/*_old

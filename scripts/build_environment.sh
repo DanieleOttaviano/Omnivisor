@@ -1,391 +1,177 @@
 #!/bin/bash
 
+######################################
+# Usage
+######################################
 usage() {
-  echo -e "Usage: $0 \r\n \
-  This script download and configure everything needed to run a <backend> in a <target> machine:\r\n \
-      [-t <target>]\r\n \
-      [-b <backend>]\r\n \
-      [-s Skip GIT cloning]\r\n \
-      [-h help]" 1>&2
-    exit 1
+  info "Usage: $0 [options]"
+  echo ""
+  echo "This script downloads and configures everything needed to run a <backend> in a <target> machine."
+  echo ""
+  echo "Options:"
+  echo "  -t, --target   Target platform"
+  echo "  -b, --backend  Backend name"
+  echo "  -s, --skip     Skip GIT cloning"
+  echo "  -v, --verbose  Verbose output"
+  echo "  -h, --help     Show this help and exit"
+  echo ""
+  warn "Valid <target>-<backend>:"
+  cat "${ENVIRONMENTS_LIST}"
+  exit 1
 }
 
-# DIRECTORIES
+######################################
+# Command runner
+######################################
+run_cmd() {
+  local logfile=$1; shift
+  if [[ $VERBOSE -eq 1 ]]; then
+    "$@" 2>&1 | tee -a "$logfile"
+  else
+    "$@" &>> "$logfile"
+  fi
+}
+
+######################################
+# Repo cloning
+######################################
+clone_repo() {
+  local name=$1
+  local lname=${name,,}
+  local build_flag_var="${name}_BUILD"
+  local repo_var="${name}_REPOSITORY"
+  local branch_var="${name}_BRANCH"
+  local commit_var="${name}_COMMIT"
+  local dir_var="${lname}_dir"
+
+  local build_flag="${!build_flag_var:-}"
+  local repo="${!repo_var:-}"
+  local branch="${!branch_var:-}"
+  local commit="${!commit_var:-}"
+  local dir="${!dir_var:-}"
+  local log_file="${log_dir}/${lname}_clone.log"
+
+  [[ ${build_flag,,} != y && ${build_flag,,} != yes ]] && return 0
+
+  info "Cloning $name repository..."
+  if [[ -n "$commit" ]]; then
+    run_cmd "$log_file" git clone "$repo" "$dir" || return 1
+    run_cmd "$log_file" git -C "$dir" reset --hard "$commit" || return 2
+    success "$name cloned at commit $commit"
+  elif [[ -n "$branch" ]]; then
+    run_cmd "$log_file" git clone --depth 1 --branch "$branch" "$repo" "$dir" || return 1
+    success "$name cloned from branch $branch"
+  else
+    run_cmd "$log_file" git clone "$repo" "$dir" || return 1
+    success "$name cloned from master"
+  fi
+}
+
+######################################
+# Compilation
+######################################
+compile_component() {
+  local name=$1
+  local build_flag_var="${name}_BUILD"
+  local build_flag="${!build_flag_var:-}"
+
+  [[ ${build_flag,,} != y && ${build_flag,,} != yes ]] && return 0
+
+  local patch_args_var="${name}_PATCH_ARGS"
+  local upd_args_var="UPD_${name}_COMPILE_ARGS"
+  local compile_args_var="${name}_COMPILE_ARGS"
+
+  local patch_args="${!patch_args_var}"
+  local upd_args="${!upd_args_var}"
+  local compile_args="${!compile_args_var}"
+  local log_file="${log_dir}/${name,,}_compile.log"
+
+
+  : > "$log_file"
+  info "Compiling $name"
+
+  if [[ -f "${script_dir}/patch/${name,,}_patch.sh" ]]; then
+    info "  Patching $name"
+  run_cmd "$log_file" bash -c "yes n | '${script_dir}/patch/${name,,}_patch.sh' -t $TARGET -b $BACKEND $patch_args" \
+      || { error "$name patching failed (see $log_file)"; exit 1; }
+  fi
+
+  if [[ -f "${script_dir}/defconfigs/${name,,}_update_defconfigs.sh" ]]; then
+    info "  Updating $name configuration"
+    run_cmd "$log_file" bash -c "yes y | '${script_dir}/defconfigs/${name,,}_update_defconfigs.sh' -t $TARGET -b $BACKEND $upd_args" \
+      || { error "$name defconfig update failed (see $log_file)"; exit 1; }
+  fi
+
+  if [[ -f "${script_dir}/compile/${name,,}_compile.sh" ]]; then
+    info "  Building $name"
+    if run_cmd "$log_file" bash -c "yes y | '${script_dir}/compile/${name,,}_compile.sh' -t $TARGET -b $BACKEND $compile_args"; then
+      success "$name compiled successfully"
+    else
+      error "$name compilation failed (see $log_file)"
+      exit 1
+    fi
+  else
+    error "No compile script found for $name"
+    exit 1
+  fi
+}
+
+######################################
+# Main
+######################################
 script_dir=$(dirname -- "$(readlink -f -- "$0")")
-source "${script_dir}"/common/common.sh
+source "${script_dir}/common/common.sh"
+log_dir=$(realpath -m "${script_dir}/../log")
 
-# Skip cloning, which means no git clone at startup and use already existing repositories is disabled by default
 SKIPCLONE=0
+VERBOSE=0
+TARGET=""
+BACKEND=""
 
-# CREATE is used to create a new environment if it doesn't exist
-CREATE="create"
-
-while getopts "t:b:sh" o; do
-  case "${o}" in
-  t)
-    TARGET=${OPTARG}
-    ;;
-  b)
-    BACKEND=${OPTARG}
-    ;;
-  s)
-    SKIPCLONE=1
-    echo "GIT Cloning skip enabled"
-    ;;
-  h)
-    echo ""
-    echo "Valid targets <target>-<backend>:"
-    cat "${ENVIRONMENTS_LIST}"
-    echo "" 
-    usage
-    ;;
-  *)
-    usage
-    ;;
+# Parse args (short + long options)
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -t|--target)   TARGET="$2"; shift 2 ;;
+    -b|--backend)  BACKEND="$2"; shift 2 ;;
+    -s|--skip)     SKIPCLONE=1; shift ;;
+    -v|--verbose)  VERBOSE=1; shift ;;
+    -h|--help)     usage ;;
+    *)             usage ;;
   esac
 done
-shift $((OPTIND - 1))
 
-# Set the environment as default
-bash "${script_dir}"/change_environment.sh -t "${TARGET}" -b "${BACKEND}"
+source "${script_dir}/common/set_environment.sh" "${TARGET}" "${BACKEND}"
 
-# Set the Environment
-source "${script_dir}"/common/set_environment.sh "${TARGET}" "${BACKEND}" "${CREATE}"
+# Create dirs
+mkdir -p "${build_dir}" "${install_dir}" "${output_dir}" \
+         "${boot_dir}" "${boot_sources_dir}" \
+         "${rootfs_dir}" "${rootfs_dir}/${TARGET}" "${log_dir}"
+rm -f "${log_dir}"/*
 
-# SKIP CLONE if requested
-echo "SKIP CLONE = ${SKIPCLONE}"
-
-## CLONE PHASE ##
-if [[ ${SKIPCLONE} -eq 0 ]]; then
-  #Clone QEMU
-  {
-    if [[ ${QEMU_BUILD,,} =~ ^y(es)?$ ]]; then
-      echo "QEMU repository = ${QEMU_REPOSITORY}"
-
-      # Use the specific COMMIT if defined
-      if [[ -n "${QEMU_COMMIT}" ]]; then
-        echo "QEMU commit:${QEMU_COMMIT}"
-        git clone "${QEMU_REPOSITORY}" "${qemu_dir}"
-        cd "${qemu_dir}" || exit 1
-        git reset --hard "${QEMU_COMMIT}"
-
-      # If COMMIT not defined, use BRANCH
-      elif [ -n "${QEMU_BRANCH}" ]; then
-        echo "QEMU commit not specified, using QEMU branch  = ${QEMU_BRANCH}"
-        git clone --depth 1 "${QEMU_REPOSITORY}" --branch "${QEMU_BRANCH}" "${qemu_dir}"
-
-      # if both COMMIT and BRANCH are not defined use master
-      else
-        echo "QEMU commit and branch not specified, cloning master"
-        git clone "${QEMU_REPOSITORY}" "${qemu_dir}"
-      fi
-
-    else
-      echo "Skipping QEMU cloning"
+######################################
+# Clone phase
+######################################
+info "### CLONE PHASE ###"
+if [[ $SKIPCLONE -eq 0 ]]; then
+  while read -r comp; do
+    [[ -z "$comp" || "$comp" =~ ^# ]] && continue
+    if ! clone_repo "$comp"; then
+      error "Failed to clone $comp (see ${log_dir}/${comp,,}_clone.log)"
+      exit 1
     fi
-  } &
-  pidQEMU=$!
-
-  #Clone ATF
-  {
-    if [[ ${ATF_BUILD,,} =~ ^y(es)?$ ]]; then
-      echo "ATF repository = ${ATF_REPOSITORY}"
-
-      # Use the specific COMMIT if defined
-      if [[ -n "${ATF_COMMIT}" ]]; then
-        echo "ATF commit:${ATF_COMMIT}"
-        git clone "${ATF_REPOSITORY}" "${atf_dir}"
-        cd "${atf_dir}" || exit 1
-        git reset --hard "${ATF_COMMIT}"
-
-      # If COMMIT not defined, use BRANCH
-      elif [ -n "${ATF_BRANCH}" ]; then
-        echo "ATF commit not specified, using ATF branch  = ${ATF_BRANCH}"
-        git clone --depth 1 "${ATF_REPOSITORY}" --branch "${ATF_BRANCH}" "${atf_dir}"
-
-      # if both COMMIT and BRANCH are not defined use master
-      else
-        echo "ATF commit and branch not specified, cloning master"
-        git clone "${ATF_REPOSITORY}" "${atf_dir}"
-      fi
-
-    else
-      echo "Skipping ATF cloning"
-    fi
-  } &
-  pidATF=$!
-
-  #Clone U-BOOT
-  {
-    if [[ ${UBOOT_BUILD,,} =~ ^y(es)?$ ]]; then
-      echo "U-BOOT repository = ${UBOOT_REPOSITORY}"
-
-      # Use the specific COMMIT if defined
-      if [[ -n "${UBOOT_COMMIT}" ]]; then
-        echo "U-BOOT commit:${UBOOT_COMMIT}"
-        git clone "${UBOOT_REPOSITORY}" "${uboot_dir}"
-        cd "${uboot_dir}" || exit 1
-        git reset --hard "${UBOOT_COMMIT}"
-
-      # If COMMIT not defined, use BRANCH
-      elif [ -n "${UBOOT_BRANCH}" ]; then
-        echo "U-BOOT commit not specified, using U-BOOT branch  = ${UBOOT_BRANCH}"
-        git clone --depth 1 "${UBOOT_REPOSITORY}" --branch "${UBOOT_BRANCH}" "${uboot_dir}"
-
-      # if both COMMIT and BRANCH are not defined use master
-      else
-        echo "U-BOOT commit and branch not specified, cloning master"
-        git clone "${UBOOT_REPOSITORY}" "${uboot_dir}"
-      fi
-
-    else
-      echo "Skipping U-BOOT cloning"
-    fi
-  } &
-  pidUBOOT=$!
-
-  #Clone LINUX
-  {
-    if [[ ${LINUX_BUILD,,} =~ ^y(es)?$ ]]; then
-      echo "LINUX repository = ${LINUX_REPOSITORY}"
-
-      # Use the specific COMMIT if defined
-      if [[ -n "${LINUX_COMMIT}" ]]; then
-        echo "LINUX commit:${LINUX_COMMIT}"
-        git clone "${LINUX_REPOSITORY}" ${linux_dir}
-        cd "${linux_dir}" || exit 1
-        git reset --hard "${LINUX_COMMIT}"
-
-      # If COMMIT not defined, use BRANCH
-      elif [[ -n "${LINUX_BRANCH}" ]]; then
-        echo "LINUX commit not specified, using LINUX branch  = ${LINUX_BRANCH}"
-        git clone --depth 1 "${LINUX_REPOSITORY}" --branch "${LINUX_BRANCH}" "${linux_dir}"
-
-      # if both COMMIT and BRANCH are not defined use master
-      else
-        echo "LINUX commit and branch not specified, cloning master"
-        git clone "${LINUX_REPOSITORY}" "${linux_dir}"
-      fi
-
-    else
-      echo "Skipping LINUX cloning"
-    fi
-  } &
-  pidLINUX=$!
-
-  #Clone BUILDROOT
-  {
-    if [[ ${BUILDROOT_BUILD,,} =~ ^y(es)?$ ]]; then
-      echo "BUILDROOT repository = ${BUILDROOT_REPOSITORY}"
-
-      # Use the specific COMMIT if defined
-      if [[ -n "${BUILDROOT_COMMIT}" ]]; then
-        echo "BUILDROOT commit:${BUILDROOT_COMMIT}"
-        git clone "${BUILDROOT_REPOSITORY}" "${buildroot_dir}"
-        cd "${buildroot_dir}" || exit 1
-        git reset --hard "${BUILDROOT_COMMIT}"
-
-      # If COMMIT not defined, use BRANCH
-      elif [[ -n "${BUILDROOT_BRANCH}" ]]; then
-        echo "BUILDROOT commit not specified, using BUILDROOT branch  = ${BUILDROOT_BRANCH}"
-        git clone --depth 1 "${BUILDROOT_REPOSITORY}" --branch "${BUILDROOT_BRANCH}" "${buildroot_dir}"
-
-      # if both COMMIT and BRANCH are not defined use master
-      else
-        echo "BUILDROOT commit and branch not specified, cloning master"
-        git clone "${BUILDROOT_REPOSITORY}" "${buildroot_dir}"
-      fi
-
-    else
-      echo "Skipping BUILDROOT cloning"
-    fi
-
-  } &
-  pidBUILDROOT=$!
-
-  #Clone JAILHOUSE
-  {
-    if [[ ${JAILHOUSE_BUILD,,} =~ ^y(es)?$ ]]; then
-      echo "JAILHOUSE repository = ${JAILHOUSE_REPOSITORY}"
-
-      # Use the specific COMMIT if defined
-      if [[ -n "${JAILHOUSE_COMMIT}" ]]; then
-        echo "JAILHOUSE commit:${JAILHOUSE_COMMIT}"
-        git clone "${JAILHOUSE_REPOSITORY}" "${jailhouse_dir}"
-        cd "${jailhouse_dir}" || exit 1
-        git reset --hard "${JAILHOUSE_COMMIT}"
-
-      # If COMMIT not defined, use BRANCH
-      elif [[ -n "${JAILHOUSE_BRANCH}" ]]; then
-        echo "JAILHOUSE commit not specified, using QEMU branch  = ${JAILHOUSE_BRANCH}"
-        git clone --depth 1 "${JAILHOUSE_REPOSITORY}" --branch "${JAILHOUSE_BRANCH}" "${jailhouse_dir}"
-
-      # if both COMMIT and BRANCH are not defined use master
-      else
-        echo "JAILHOUSE commit and branch not specified, cloning master"
-        git clone "${JAILHOUSE_REPOSITORY}" "${jailhouse_dir}"
-      fi
-
-    else
-      echo "Skipping JAILHUSE cloning"
-    fi
-  } &
-  pidJAILHOUSE=$!
-
-  #Clone BOOTGEN
-  {
-    if [[ ${BOOTGEN_BUILD,,} =~ ^y(es)?$ ]]; then
-      echo "BOOTGEN repository = ${BOOTGEN_REPOSITORY}"
-
-      # Use the specific COMMIT if defined
-      if [[ -n "${BOOTGEN_COMMIT}" ]]; then
-        echo "BOOTGEN commit:${BOOTGEN_COMMIT}"
-        git clone "${BOOTGEN_REPOSITORY}" "${bootgen_dir}"
-        cd "${bootgen_dir}" || exit 1
-        git reset --hard "${BOOTGEN_COMMIT}"
-
-      # If COMMIT not defined, use BRANCH
-      elif [[ -n "${BOOTGEN_BRANCH}" ]]; then
-        echo "BOOTGEN commit not specified, using BOOTGEN branch  = ${BOOTGEN_BRANCH}"
-        git clone --depth 1 "${BOOTGEN_REPOSITORY}" --branch "${BOOTGEN_BRANCH}" "${bootgen_dir}"
-
-      # if both COMMIT and BRANCH are not defined use master
-      else
-        echo "BOOTGEN commit and branch not specified, cloning master"
-        git clone "${BOOTGEN_REPOSITORY}" "${bootgen_dir}"
-      fi
-
-    else
-      echo "Skipping BOOTGEN cloning"
-    fi
-  } &
-  pidBOOTGEN=$!
-
-  echo "Waiting for GIT to complete ..."
-  #Wait for all the clones to complete
-  wait ${pidQEMU}
-  wait ${pidATF}
-  wait ${pidUBOOT}
-  wait ${pidLINUX}
-  wait ${pidBUILDROOT}
-  wait ${pidJAILHOUSE}
-  wait ${pidBOOTGEN}
-
+  done < "${environment_dir}/components.txt"
 else
-  echo "Skipping clone from repositories"
-  sleep 1
+  warn "Skipping clone from GIT repositories"
 fi
+echo ""
 
-# Create the target directories
-mkdir -p "${build_dir}"
-mkdir -p "${install_dir}"
-mkdir -p "${output_dir}"
-mkdir -p "${boot_dir}"
-mkdir -p "${boot_sources_dir}"
-mkdir -p "${rootfs_dir}"
-mkdir -p "${rootfs_dir}/${TARGET}"
+######################################
+# Compile phase
+######################################
+info "### COMPILING PHASE ###"
+while read -r comp; do
+  [[ -z "$comp" || "$comp" =~ ^# ]] && continue
+  compile_component "$comp"
+done < "${environment_dir}/components.txt"
 
-## COMPILING PHASE ##
-
-# Compile QEMU
-if [[ ${QEMU_BUILD,,} =~ ^y(es)?$ ]]; then
-  echo "Compiling QEMU ..."
-  yes "y" | bash "${script_dir}"/compile/qemu_compile.sh ${QEMU_COMPILE_ARGS}
-  if [[ $? -eq 1 ]]; then
-    echo "QEMU compilation failed. Exiting..."
-    exit 1
-  fi
-else
-  echo "Skipping QEMU compile"
-fi
-
-# Compile ATF
-if [[ ${ATF_BUILD,,} =~ ^y(es)?$ ]]; then
-  echo "Compiling ATF ..."
-  yes "y" | bash "${script_dir}"/compile/atf_compile.sh ${ATF_COMPILE_ARGS}
-  if [[ $? -eq 1 ]]; then
-    echo "ATF compilation failed. Exiting..."
-    exit 1
-  fi
-else
-  echo "Skipping ATF compile"
-fi
-
-# Compile UBOOT 
-if [[ ${UBOOT_BUILD,,} =~ ^y(es)?$ ]]; then 
-  # to do patching ...
-  #echo "Patching U-BOOT ..."
-  #yes "n" | bash "${script_dir}"/patch/uboot_patch.sh ${UBOOT_PATCH_ARGS}
-  echo "Updating U-BOOT configuration ..."
-  yes "y" | bash "${script_dir}"/defconfigs/u-boot_update_defconfigs.sh ${UPD_UBOOT_COMPILE_ARGS}
-  echo "Compiling U-BOOT LINUX kernel ..."
-  yes "y" | bash "${script_dir}"/compile/u-boot_compile.sh ${UBOOT_COMPILE_ARGS}
-  if [[ $? -eq 1 ]]; then
-    echo "U-BOOT compilation failed. Exiting..."
-    exit 1
-  fi
-else
-  echo "Skipping U-BOOT compile"
-fi
-
-# Compile the LINUX kernel
-if [[ ${LINUX_BUILD,,} =~ ^y(es)?$ ]]; then 
-  echo "Patching LINUX ..."
-  yes "n" | bash "${script_dir}"/patch/linux_patch.sh ${LINUX_PATCH_ARGS}
-  echo "Updating LINUX configuration ..."
-  yes "y" | bash "${script_dir}"/defconfigs/linux_update_defconfigs.sh ${UPD_LINUX_COMPILE_ARGS}
-  echo "Compiling the LINUX kernel ..."
-  yes "y" | bash "${script_dir}"/compile/linux_compile.sh ${LINUX_COMPILE_ARGS}
-  if [[ $? -eq 1 ]]; then
-    echo "LINUX compilation failed. Exiting..."
-    exit 1
-  fi
-else
-  echo "Skipping LINUX compile"
-fi
-
-# Compile the rootfs using BUILDROOT (Linux modules loaded from overlay-fs)
-if [[ ${BUILDROOT_BUILD,,} =~ ^y(es)?$ ]]; then
-  echo "Patching BUILDROOT ..."
-  yes "n" | bash "${script_dir}"/patch/buildroot_patch.sh ${BUILDROOT_PATCH_ARGS}
-  echo "Updating BUILDROOT configuration ..."
-  yes "y" | bash "${script_dir}"/defconfigs/buildroot_update_defconfigs.sh ${UPD_BUILDROOT_COMPILE_ARGS}
-  echo "Compiling the rootfs with BUILDROOT ..."
-  yes "y" | bash "${script_dir}"/compile/buildroot_compile.sh ${BUILDROOT_COMPILE_ARGS}
-  if [[ $? -eq 1 ]]; then
-    echo "BUILDROOT compilation failed. Exiting..."
-    exit 1
-  fi
-else
-  echo "Skipping BUILDROOT compile"
-fi
-
-# Compile JAILHOUSE
-if [[ ${JAILHOUSE_BUILD,,} =~ ^y(es)?$ ]]; then
-  echo "Patching JAILHOUSE ..."
-  yes "n" | bash "${script_dir}"/patch/jailhouse_patch.sh ${JAILHOUSE_PATCH_ARGS}
-  echo "Updating JAILHOUSE configuration ..."
-  yes "y" | bash "${script_dir}"/defconfigs/jailhouse_update_defconfigs.sh ${UPD_JAILHOUSE_COMPILE_ARGS}
-  echo "Compiling JAILHOUSE ..."
-  yes "y" | bash "${script_dir}"/compile/jailhouse_compile.sh ${JAILHOUSE_COMPILE_ARGS}
-  if [[ $? -eq 1 ]]; then
-    echo "JAILHOUSE compilation failed. Exiting..."
-    exit 1
-  fi
-else
-  echo "Skipping JAILHOUSE compile"
-fi
-
-# Compile BOOTGEN
-if [[ ${BOOTGEN_BUILD,,} =~ ^y(es)?$ ]]; then
-  echo "Compile BOOTGEN"
-  yes "y" | bash "${script_dir}"/compile/bootgen_compile.sh ${BOOTGEN_COMPILE_ARGS}
-  if [[ $? -eq 1 ]]; then
-    echo "BOOTGEN compilation failed. Exiting..."
-    exit 1
-  fi
-else
-  echo "Skipping BOOTGEN compile"
-fi
-
-echo "Finish!"
+success "Build finished successfully!"

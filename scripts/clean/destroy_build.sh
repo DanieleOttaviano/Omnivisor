@@ -1,45 +1,42 @@
 #!/bin/bash
 
 usage() {
-  echo -e "Usage: $0 \r\n \
-  Delete builds and output for the specified target:\r\n \
-    [-t <target>]\r\n \
-    [-b <backend>]\r\n \
-    [-h help]" 1>&2
+  cat <<EOF
+$(basename "$0") - Delete builds and output for a target
+
+Usage:
+  $0 -t <target> -b <backend>
+
+Options:
+  -t, --target <target>     Target board/platform
+  -b, --backend <backend>   Backend (e.g. jailhouse)
+  -h, --help                Show this help message
+EOF
   exit 1
 }
 
-# DIRECTORIES
 current_dir=$(dirname -- "$(readlink -f -- "$0")")
-script_dir=$(dirname "${current_dir}")
-source "${script_dir}"/common/common.sh
+script_dir=$(dirname "$current_dir")
+source "$script_dir/common/common.sh"
 
-while getopts "t:b:h" o; do
-  case "${o}" in
-  t)
-    TARGET=${OPTARG}
-    ;;
-  b)
-    BACKEND=${OPTARG}
-    ;;
-  h)
-    usage
-    ;;
-  *)
-    usage
-    ;;
+TARGET="" BACKEND=""
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -t|--target) TARGET="$2"; shift 2 ;;
+    -b|--backend) BACKEND="$2"; shift 2 ;;
+    -h|--help) usage ;;
+    *) error "Unknown option: $1"; usage ;;
   esac
 done
-shift $((OPTIND - 1))
 
-# Set the Environment
-source "${script_dir}"/common/set_environment.sh "${TARGET}" "${BACKEND}"
+[[ -z "$TARGET" || -z "$BACKEND" ]] && { error "Both target and backend required."; usage; }
 
-# ASK User if he really wants to delete the build
-read -r -p "Do you really want to delete ${TARGET}/${BACKEND} builds? (y/n): " DELETE
-if [[ "${DELETE,,}" =~ ^y(es)?$ ]]; then
-  # Clean build
+source "$script_dir/common/set_environment.sh" "$TARGET" "$BACKEND"
+
+read -r -p "Delete ${TARGET}/${BACKEND} builds? (y/N): " REPLY
+if [[ "${REPLY,,}" =~ ^y(es)?$ ]]; then
   rm -rf "${build_dir:?}"/*
+  success "Deleted builds for ${TARGET}/${BACKEND}."
 else
-  echo "Skipping DELETE."
+  warn "Skipping delete."
 fi
