@@ -52,12 +52,12 @@ The kria boars doesn't boot from SD but it uses the pre-defined BOOT.BIN in the 
 - bl31.elf
 - u-boot.elf
 
-We need to change it since for 2 reasons: 
+We need to change it for 2 reasons: 
 - We need to change the bl31.elf for using the Omnivisor and Memguard.
-- we may need to change the bitstream loaded at boot time. 
+- we need to change the bitstream loaded at boot time.
 
 To chage the BOOT.BIN into the QSPI memory, we can use the xmutil applicaiton in the Ubuntu image we loaded 
-(see https://xilinx-wiki.atlassian.net/wiki/spaces/A/pages/3020685316/Kria+SOM+Boot+Firmware+Update).
+(see [Kria SOM Boot Firmware Update](https://xilinx-wiki.atlassian.net/wiki/spaces/A/pages/3020685316/Kria+SOM+Boot+Firmware+Update)).
 
 Copy the BOOT.BIN produced during the build of the environment into the board: 
 ```sh
@@ -73,7 +73,12 @@ Using the following command you should see that the loaded firmware will be the 
 sudo xmutil bootfw_status
 ```
 
-Then reboot the board, if the atf and u-boot are correctly loaded you need to save it before the next reboot.
+Then reboot the board.
+```sh
+sudo reboot
+```
+
+if the atf and u-boot are correctly loaded you need to save it before the next reboot.
 Login into the Ubuntu image of the kria again and launch the following command to do it:
 ```sh
 sudo xmutil bootfw_update -v
@@ -81,9 +86,8 @@ sudo xmutil bootfw_update -v
 
 
 ## Load new Kernel Image and the DTB overlay
-Now we need to update the kernel with the one we compiled in this repo during the building of the environment,
-and we need to upload the device tree overlay for seeing the remotecore, and for reserving memory for jailhouse.
-N.B. to use ssh on the root you need to setup the "/etc/ssh/sshd_config" file: 
+Now we need to update the kernel and the device tree.
+N.B. to use ssh on the root you need to setup the "/etc/ssh/sshd_config" file on the board: 
 
 ```sh
 PermitRootLogin yes
@@ -95,7 +99,7 @@ then we can copy the artifacts:
 scp environment/kr260/jailhouse/output/boot/Image root@<IP>:/boot/firmware/Image
 scp environment/kr260/jailhouse/output/boot/system.dtb root@<IP>:/boot/firmware/user-override.dtb
 ```
-then reboot the board and stop the boot before u-boot autobooting.
+then reboot the board.
 
 
 ## Load Jailhouse

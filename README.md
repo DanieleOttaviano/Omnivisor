@@ -18,7 +18,7 @@ This repository provides a unified framework to build the full software stack re
 
 Each environment consists of:
 - **Pre-Built Components**: Board-specific firmware and dependencies that are not intended for modification (e.g., board-specific firmware).
-- **To-Build Components**: Customizable software built using this repository (e.g., kernels, hypervisors, and RunPHI itself).
+- **To-Build Components**: Customizable software built using this repository (e.g., kernels, hypervisors).
 
 A dedicated configuration script (`<target>-<backend>.sh`) defines the set of components, Git repositories, commits, and compilation flags for each environment.
 
@@ -30,7 +30,6 @@ A dedicated configuration script (`<target>-<backend>.sh`) defines the set of co
 - [2. Dependencies](#2-dependencies)
   - [2.1 Add User to Docker Group](#21-add-user-to-docker-group)
   - [2.2 Build and Launch Docker Environment](#22-build-and-launch-docker-environment)
-  - [2.3 Optional: Native Setup Without Docker](#23-optional-native-setup-without-docker-not-recommended)
 - [3. Usage](#3-usage)
   - [3.1 Review Configuration](#31-review-configuration)
   - [3.2 Build the Environment](#32-build-the-environment)
@@ -45,7 +44,8 @@ A dedicated configuration script (`<target>-<backend>.sh`) defines the set of co
 - [x] Jailhouse
 
 ### 1.2 Supported Board:
-- [x] kria (kv260 Zynq Ultrascale +)
+- [x] kria  (kria kv260 Zynq Ultrascale +)
+- [x] kr260 (kria kr260 Zynq Ultrascale +)
 
 #### 1.2.1 Supported Cores:
 - [x] Cortex-A53 (APU)
@@ -95,7 +95,7 @@ Launch the following script to download, configure, and compile all the "To-Buil
 ./scripts/build_environment.sh -t <target> -b <backend>
 ```
 
-The previous script set the default environment.  You can override the default environment in any script using `-t` and `-b` flags again.
+The previous script set the default environment. To override the default environment use the`-t` and `-b` flags again in any other script.
 
 
 ### 3.3 Setup the Target

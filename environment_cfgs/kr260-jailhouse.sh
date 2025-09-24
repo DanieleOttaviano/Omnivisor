@@ -14,7 +14,7 @@ CROSS_COMPILE="aarch64-linux-gnu-"
 
 ## Boot Sources Configuration
 BOOTCMD_CONFIG=""
-DTS_CONFIG=""
+DTS_CONFIG="omnv"
 
 ## COMPONENTS ##
 # QEMU
@@ -48,7 +48,7 @@ BUILDROOT_BUILD="n"
 # JAILHOUSE
 JAILHOUSE_BUILD="y"
 UPD_JAILHOUSE_COMPILE_ARGS=""
-JAILHOUSE_COMPILE_ARGS="-n -r all"
+JAILHOUSE_COMPILE_ARGS="-r all"
 JAILHOUSE_PATCH_ARGS=""
 JAILHOUSE_REPOSITORY="https://github.com/DanieleOttaviano/jailhouse.git"
 JAILHOUSE_BRANCH="master"

@@ -52,7 +52,6 @@ The expected output is:
 ...
 ```
 
-
 To stop the VM: 
 ```sh
 jailhouse cell destroy inmate-demo-RPU0

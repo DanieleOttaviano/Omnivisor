@@ -13,7 +13,7 @@ ARCH="arm64"
 CROSS_COMPILE="aarch64-linux-gnu-"
 
 ## Boot Sources Configuration
-BOOTCMD_CONFIG=""
+BOOTCMD_CONFIG="clean"
 DTS_CONFIG="omnv"
 
 ## COMPONENTS ##
