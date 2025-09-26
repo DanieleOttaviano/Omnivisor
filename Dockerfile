@@ -5,14 +5,23 @@ FROM ubuntu:22.04
 ENV DEBIAN_FRONTEND=noninteractive
 ENV TZ=America/Los_Angeles
 
+# Refresh keyrings before apt-get update
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    gnupg \
+    ubuntu-keyring \
+    && rm -rf /var/lib/apt/lists/*
+
 # Update + install base dependencies
 RUN apt-get update && apt-get install -y \
     tzdata \
     vim git make sed binutils diffutils python3 ninja-build build-essential \
     curl bzip2 tar findutils unzip cmake \
     rsync libglib2.0-dev libpixman-1-dev wget cpio bc \
+    libgcrypt20-dev zlib1g-dev autoconf automake libtool \
     libncurses5 libncurses5-dev flex bison openssl libssl-dev kmod \
     python3-pip file pkg-config u-boot-tools \
+    telnet \
     && rm -rf /var/lib/apt/lists/*
 
 # Python deps

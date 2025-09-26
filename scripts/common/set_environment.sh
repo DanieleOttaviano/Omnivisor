@@ -53,6 +53,7 @@ custom_build_dir=${backend_dir}/custom_build
 
 # QEMU
 qemu_dir=${build_dir}/qemu
+qemu_build=${qemu_dir}/build
 qemu_bin_dir=${qemu_dir}/build/aarch64-softmmu
 
 # ATF

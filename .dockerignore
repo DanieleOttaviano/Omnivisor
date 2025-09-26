@@ -1,0 +1,10 @@
+environment/*/jailhouse/build
+environment/*/jailhouse/output
+tmp/
+*.img
+*.ext4
+*.tar
+*.tar.gz
+*.xz
+*.zip
+.git

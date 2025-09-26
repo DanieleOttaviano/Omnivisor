@@ -1,0 +1,959 @@
+From 550b83bdd9306b5e7a61d93a87636e09b6b7bd6e Mon Sep 17 00:00:00 2001
+From: Daniele Ottaviano <danieleottaviano97@gmail.com>
+Date: Tue, 15 Aug 2023 11:04:22 -0400
+Subject: [PATCH] Update for kernel version greater then 5 7 and 5 15. The
+ driver has been updated to successfully export the symbols from linux  kernel
+ version >= 5.7. Therefore, the jailhouse_ioremap function has been updated to
+ give execution permissions for linux kernel version >= 5.15.
+
+---
+ ...ditional-compilation-for-KERNEL-5.15.patch | 482 ++++++++++++++++++
+ configs/arm64/zynqmp-kv260.c                  | 304 +++++++++++
+ driver/main.c                                 |  69 ++-
+ 3 files changed, 851 insertions(+), 4 deletions(-)
+ create mode 100644 0001-Revert-Added-conditional-compilation-for-KERNEL-5.15.patch
+ create mode 100644 configs/arm64/zynqmp-kv260.c
+
+diff --git a/0001-Revert-Added-conditional-compilation-for-KERNEL-5.15.patch b/0001-Revert-Added-conditional-compilation-for-KERNEL-5.15.patch
+new file mode 100644
+index 0000000..3129b26
+--- /dev/null
++++ b/0001-Revert-Added-conditional-compilation-for-KERNEL-5.15.patch
+@@ -0,0 +1,482 @@
++From d8a6d354e006941b5480a0bd0e7ac5acda3d8076 Mon Sep 17 00:00:00 2001
++From: Daniele Ottaviano <danieleottaviano97@gmail.com>
++Date: Tue, 15 Aug 2023 12:39:59 -0400
++Subject: [PATCH] Revert "Added conditional compilation for KERNEL >= 5.15"
++
++This reverts commit a6f4c2689e7fc21ad4a1dad206add0211b1bf7d5.
++---
++ ...-for-kernel-version-greater-then-5-7.patch | 462 ------------------
++ 1 file changed, 462 deletions(-)
++ delete mode 100644 0001-Update-for-kernel-version-greater-then-5-7.patch
++
++diff --git a/0001-Update-for-kernel-version-greater-then-5-7.patch b/0001-Update-for-kernel-version-greater-then-5-7.patch
++deleted file mode 100644
++index 459c02b..0000000
++--- a/0001-Update-for-kernel-version-greater-then-5-7.patch
+++++ /dev/null
++@@ -1,462 +0,0 @@
++-From c950320da00ee389f3d77cc009bfc774cad8817e Mon Sep 17 00:00:00 2001
++-From: Daniele Ottaviano <danieleottaviano97@gmail.com>
++-Date: Tue, 15 Aug 2023 11:04:22 -0400
++-Subject: [PATCH] Update for kernel version greater then 5 7. 
++- The driver has been updated to successfully export the symbols from linux  kernel version >=
++- 5.7. Therefore, the jailhouse_ioremap function has been updated to give
++- execution permissions for linux kernel version >= 5.15.
++-
++----
++- configs/arm64/zynqmp-kv260.c | 304 +++++++++++++++++++++++++++++++++++
++- driver/main.c                |  62 ++++++-
++- 2 files changed, 361 insertions(+), 5 deletions(-)
++- create mode 100644 configs/arm64/zynqmp-kv260.c
++-
++-diff --git a/configs/arm64/zynqmp-kv260.c b/configs/arm64/zynqmp-kv260.c
++-new file mode 100644
++-index 0000000..bfc42c0
++---- /dev/null
++-+++ b/configs/arm64/zynqmp-kv260.c
++-@@ -0,0 +1,304 @@
++-+/*
++-+ * Jailhouse, a Linux-based partitioning hypervisor
++-+ *
++-+ * Configuration for Xilinx ZynqMP ZCU102 eval board
++-+ *
++-+ * Copyright (c) Siemens AG, 2016
++-+ *
++-+ * Authors:
++-+ *  Jan Kiszka <jan.kiszka@siemens.com>
++-+ *
++-+ * This work is licensed under the terms of the GNU GPL, version 2.  See
++-+ * the COPYING file in the top-level directory.
++-+ *
++-+ * Reservation via device tree: 0x800000000..0x83fffffff
++-+ */
++-+#include <jailhouse/types.h>
++-+#include <jailhouse/cell-config.h>
++-+#include <asm/qos-400.h>
++-+#include <zynqmp-qos-config.h>
++-+
++-+struct {
++-+	struct jailhouse_system header;
++-+	__u64 cpus[1];
++-+	struct jailhouse_memory mem_regions[24];
++-+	struct jailhouse_irqchip irqchips[1];
++-+	struct jailhouse_pci_device pci_devices[2];
++-+	union jailhouse_stream_id stream_ids[3];
++-+	struct jailhouse_qos_device qos_devices[35];
++-+} __attribute__((packed)) config = {
++-+	.header = {
++-+		.signature = JAILHOUSE_SYSTEM_SIGNATURE,
++-+		.revision = JAILHOUSE_CONFIG_REVISION,
++-+		.flags = JAILHOUSE_SYS_VIRTUAL_DEBUG_CONSOLE,
++-+		.hypervisor_memory = {
++-+			.phys_start = 0x7f000000,
++-+			.size =       0x01000000,
++-+		},
++-+		.debug_console = {
++-+			.address = 0xff010000,
++-+			.size = 0x1000,
++-+			.type = JAILHOUSE_CON_TYPE_XUARTPS,
++-+			.flags = JAILHOUSE_CON_ACCESS_MMIO |
++-+				 JAILHOUSE_CON_REGDIST_4,
++-+		},
++-+		.platform_info = {
++-+			.pci_mmconfig_base = 0xfc000000,
++-+			.pci_mmconfig_end_bus = 0,
++-+
++-+			.pci_is_virtual = 1,
++-+			.pci_domain = -1,
++-+			.color = {
++-+				.way_size = 0x10000,
++-+				.root_map_offset = 0x0C000000000,
++-+			},
++-+			.iommu_units = {
++-+				{
++-+					.type = JAILHOUSE_IOMMU_ARM_MMU500,
++-+					.base = 0xfd800000,
++-+					.size = 0x20000,
++-+				},
++-+			},
++-+			.arm = {
++-+				.gic_version = 2,
++-+				.gicd_base = 0xf9010000,
++-+				.gicc_base = 0xf902f000,
++-+				.gich_base = 0xf9040000,
++-+				.gicv_base = 0xf906f000,
++-+				.maintenance_irq = 25,
++-+			},
++-+			.memguard = {
++-+				/* For this SoC we have:
++-+				   - 32 SGIs and PPIs
++-+				   - 8 SPIs
++-+				   - 148 system interrupts
++-+				   ------ Total = 188
++-+				   */
++-+				.num_irqs = 188,
++-+				.hv_timer = 26,
++-+				.irq_prio_min = 0xf0,
++-+				.irq_prio_max = 0x00,
++-+				.irq_prio_step = 0x10,
++-+				.irq_prio_threshold = 0x10,
++-+				.num_pmu_irq = 4,
++-+				/* One PMU irq per CPU */
++-+				.pmu_cpu_irq = {
++-+					175, 176, 177, 178,
++-+				},
++-+			},
++-+			.qos = {
++-+				.nic_base = 0xfd700000,
++-+				/* 1MiB Aperture */
++-+				.nic_size = 0x100000,
++-+			},
++-+		},
++-+
++-+		.root_cell = {
++-+			.name = "ZynqMP-KV260",
++-+
++-+			.cpu_set_size = sizeof(config.cpus),
++-+			.num_memory_regions = ARRAY_SIZE(config.mem_regions),
++-+			.num_irqchips = ARRAY_SIZE(config.irqchips),
++-+			.num_pci_devices = ARRAY_SIZE(config.pci_devices),
++-+			.num_stream_ids = ARRAY_SIZE(config.stream_ids),
++-+			.num_qos_devices = ARRAY_SIZE(config.qos_devices),
++-+
++-+			.vpci_irq_base = 136-32,
++-+		},
++-+	},
++-+
++-+	.cpus = {
++-+		0xf,
++-+	},
++-+
++-+	.mem_regions = {
++-+		/* IVSHMEM shared memory region for 0001:00:00.0 */
++-+		JAILHOUSE_SHMEM_NET_REGIONS(0x060000000, 0),
++-+		/* IVSHMEM shared memory region for 0001:00:01.0 */
++-+		JAILHOUSE_SHMEM_NET_REGIONS(0x060100000, 0),
++-+		/* MMIO (permissive) */ {
++-+			.phys_start = 0xfd000000,
++-+			.virt_start = 0xfd000000,
++-+			.size =	      0x03000000,
++-+			.flags = JAILHOUSE_MEM_READ | JAILHOUSE_MEM_WRITE |
++-+				JAILHOUSE_MEM_IO,
++-+		},
++-+		/* RAM */ {
++-+			.phys_start = 0x0,
++-+			.virt_start = 0x0,
++-+			.size = 0x7f000000,
++-+			.flags = JAILHOUSE_MEM_READ | JAILHOUSE_MEM_WRITE |
++-+				JAILHOUSE_MEM_EXECUTE,
++-+		},
++-+		/* RAM */ {
++-+			.phys_start = 0x800000000,
++-+			.virt_start = 0x800000000,
++-+			.size = 0x080000000,
++-+			.flags = JAILHOUSE_MEM_READ | JAILHOUSE_MEM_WRITE |
++-+				JAILHOUSE_MEM_EXECUTE,
++-+		},
++-+		/* PCI host bridge */ {
++-+			.phys_start = 0x8000000000,
++-+			.virt_start = 0x8000000000,
++-+			.size = 0x1000000,
++-+			.flags = JAILHOUSE_MEM_READ | JAILHOUSE_MEM_WRITE |
++-+				JAILHOUSE_MEM_IO,
++-+		},
++-+	},
++-+
++-+	.irqchips = {
++-+		/* GIC */ {
++-+			.address = 0xf9010000,
++-+			.pin_base = 32,
++-+			.pin_bitmap = {
++-+				0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
++-+			},
++-+		},
++-+	},
++-+
++-+	.pci_devices = {
++-+		/* 0001:00:01.0 */ {
++-+			.type = JAILHOUSE_PCI_TYPE_IVSHMEM,
++-+			.domain = 1,
++-+			.bdf = 1 << 3,
++-+			.bar_mask = JAILHOUSE_IVSHMEM_BAR_MASK_INTX,
++-+			.shmem_regions_start = 0,
++-+			.shmem_dev_id = 0,
++-+			.shmem_peers = 2,
++-+			.shmem_protocol = JAILHOUSE_SHMEM_PROTO_VETH,
++-+		},
++-+		/* 0001:00:02.0 */ {
++-+			.type = JAILHOUSE_PCI_TYPE_IVSHMEM,
++-+			.domain = 1,
++-+			.bdf = 2 << 3,
++-+			.bar_mask = JAILHOUSE_IVSHMEM_BAR_MASK_INTX,
++-+			.shmem_regions_start = 4,
++-+			.shmem_dev_id = 0,
++-+			.shmem_peers = 2,
++-+			.shmem_protocol = JAILHOUSE_SHMEM_PROTO_VETH,
++-+		},
++-+	},
++-+
++-+	.stream_ids = {
++-+		{
++-+			.mmu500.id = 0x860,
++-+			.mmu500.mask_out = 0x0,
++-+		},
++-+		{
++-+			.mmu500.id = 0x861,
++-+			.mmu500.mask_out = 0x0,
++-+		},
++-+		{
++-+			.mmu500.id = 0x870,
++-+			.mmu500.mask_out = 0xf,
++-+		},
++-+	},
++-+
++-+	.qos_devices = {
++-+		{
++-+			.name = "rpu0",
++-+			.flags = (FLAGS_HAS_REGUL),
++-+			.base = M_RPU0_BASE,
++-+		},
++-+
++-+		{
++-+			.name = "rpu1",
++-+			.flags = (FLAGS_HAS_REGUL),
++-+			.base = M_RPU1_BASE,
++-+		},
++-+
++-+		{
++-+			.name = "adma",
++-+			.flags = (FLAGS_HAS_REGUL),
++-+			.base = M_ADMA_BASE,
++-+		},
++-+
++-+		{
++-+			.name = "afifm0",
++-+			.flags = (FLAGS_HAS_REGUL),
++-+			.base = M_AFIFM0_BASE,
++-+		},
++-+		{
++-+			.name = "afifm1",
++-+			.flags = (FLAGS_HAS_REGUL),
++-+			.base = M_AFIFM1_BASE,
++-+		},
++-+
++-+		{
++-+			.name = "afifm2",
++-+			.flags = (FLAGS_HAS_REGUL),
++-+			.base = M_AFIFM2_BASE,
++-+		},
++-+
++-+		{
++-+			.name = "smmutbu5",
++-+			.flags = (FLAGS_HAS_REGUL),
++-+			.base = M_INITFPDSMMUTBU5_BASE,
++-+		},
++-+
++-+		{
++-+			.name = "dp",
++-+			.flags = (FLAGS_HAS_REGUL),
++-+			.base = M_DP_BASE,
++-+		},
++-+
++-+		{
++-+			.name = "afifm3",
++-+			.flags = (FLAGS_HAS_REGUL),
++-+			.base = M_AFIFM3_BASE,
++-+		},
++-+
++-+		{
++-+			.name = "afifm4",
++-+			.flags = (FLAGS_HAS_REGUL),
++-+			.base = M_AFIFM4_BASE,
++-+		},
++-+
++-+		{
++-+			.name = "afifm5",
++-+			.flags = (FLAGS_HAS_REGUL),
++-+			.base = M_AFIFM5_BASE,
++-+		},
++-+
++-+		{
++-+			.name = "gpu",
++-+			.flags = (FLAGS_HAS_REGUL),
++-+			.base = M_GPU_BASE,
++-+		},
++-+
++-+		{
++-+			.name = "pcie",
++-+			.flags = (FLAGS_HAS_REGUL),
++-+			.base = M_PCIE_BASE,
++-+		},
++-+
++-+		{
++-+			.name = "gdma",
++-+			.flags = (FLAGS_HAS_REGUL),
++-+			.base = M_GDMA_BASE,
++-+		},
++-+
++-+		{
++-+			.name = "sata",
++-+			.flags = (FLAGS_HAS_REGUL),
++-+			.base = M_SATA_BASE,
++-+		},
++-+
++-+		{
++-+			.name = "coresight",
++-+			.flags = (FLAGS_HAS_REGUL),
++-+			.base = M_CORESIGHT_BASE,
++-+		},
++-+
++-+		{
++-+			.name = "issib2",
++-+			.flags = (FLAGS_HAS_REGUL),
++-+			.base = ISS_IB2_BASE,
++-+		},
++-+		{
++-+			.name = "issib6",
++-+			.flags = (FLAGS_HAS_REGUL),
++-+			.base = ISS_IB6_BASE,
++-+		},
++-+	},
++-+};
++-diff --git a/driver/main.c b/driver/main.c
++-index 1ff4193..53913a7 100644
++---- a/driver/main.c
++-+++ b/driver/main.c
++-@@ -22,7 +22,9 @@
++- #include <linux/miscdevice.h>
++- #include <linux/firmware.h>
++- #include <linux/mm.h>
++-+#if LINUX_VERSION_CODE < KERNEL_VERSION(5,7,0)
++- #include <linux/kallsyms.h>
++-+#endif
++- #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,11,0)
++- #include <linux/sched/signal.h>
++- #endif
++-@@ -110,6 +112,13 @@ static bool console_available;
++- static struct resource *hypervisor_mem_res;
++- 
++- static typeof(ioremap_page_range) *ioremap_page_range_sym;
++-+static typeof(__get_vm_area_caller) *__get_vm_area_caller_sym;
++-+static int (*vmap_pages_range_noflush_sym) (unsigned long, unsigned long,  
++-+                pgprot_t, struct page **, unsigned int);
++-+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,7,0)
++-+unsigned long (*kallsyms_lookup_name_sym)(const char*);
++-+#endif
++-+
++- #ifdef CONFIG_X86
++- #if LINUX_VERSION_CODE < KERNEL_VERSION(5,3,0)
++- #define lapic_timer_period	lapic_timer_frequency
++-@@ -155,6 +164,21 @@ static void init_hypercall(void)
++- }
++- #endif
++- 
++-+static unsigned long lookup_kallsyms_lookup_name(void) 
++-+{
++-+    struct kprobe kp;
++-+    unsigned long addr;
++-+    
++-+    memset(&kp, 0, sizeof(struct kprobe));
++-+    kp.symbol_name = "kallsyms_lookup_name";
++-+    if (register_kprobe(&kp) < 0) {
++-+        return 0;
++-+    }
++-+    addr = (unsigned long)kp.addr;
++-+    unregister_kprobe(&kp);
++-+    return addr;
++-+}
++-+
++- static void copy_console_page(struct jailhouse_virt_console *dst)
++- {
++- 	unsigned int tail;
++-@@ -206,7 +230,7 @@ static long get_max_cpus(u32 cpu_set_size,
++- 
++- #if LINUX_VERSION_CODE >= KERNEL_VERSION(5,8,0)
++- #define __get_vm_area(size, flags, start, end)			\
++--	__get_vm_area_caller(size, flags, start, end,		\
++-+	__get_vm_area_caller_sym(size, flags, start, end,	\
++- 			     __builtin_return_address(0))
++- #endif
++- 
++-@@ -214,6 +238,9 @@ void *jailhouse_ioremap(phys_addr_t phys, unsigned long virt,
++- 			unsigned long size)
++- {
++- 	struct vm_struct *vma;
++-+	unsigned int i, nr = size >> PAGE_SHIFT;
++-+	struct page ** page_list = kmalloc(sizeof(struct page *) * nr,
++-+							GFP_KERNEL);
++- 
++- 	size = PAGE_ALIGN(size);
++- 	if (virt)
++-@@ -226,13 +253,23 @@ void *jailhouse_ioremap(phys_addr_t phys, unsigned long virt,
++- 		return NULL;
++- 	vma->phys_addr = phys;
++- 
++--	if (ioremap_page_range_sym((unsigned long)vma->addr,
++--				   (unsigned long)vma->addr + size, phys,
++--				   PAGE_KERNEL_EXEC)) {
++-+	for (i = 0; i < nr; i += 1U){
++-+		page_list[i]=phys_to_page(phys + (i << PAGE_SHIFT));
++-+	}
++-+	
++-+	if (vmap_pages_range_noflush_sym((unsigned long)vma->addr,
++-+				   (unsigned long)vma->addr + size, 
++-+				   PAGE_KERNEL_EXEC,
++-+				   page_list,
++-+				   PAGE_SHIFT
++-+				   )) {
++- 		vunmap(vma->addr);
++- 		return NULL;
++- 	}
++- 
++-+	kfree(page_list);
++-+
++-+
++- 	return vma->addr;
++- }
++- 
++-@@ -1040,22 +1077,37 @@ static struct notifier_block jailhouse_shutdown_nb = {
++- 	.notifier_call = jailhouse_shutdown_notify,
++- };
++- 
++-+
++- static int __init jailhouse_init(void)
++- {
++- 	int err;
++- 
++-+	// Get the address of kallsyms_lookup_name function
++-+	kallsyms_lookup_name_sym = (unsigned long (*)(const char*))lookup_kallsyms_lookup_name();
++-+	if(!kallsyms_lookup_name_sym){
++-+		pr_err("kallsyms_lookup_name function not resolved\n");
++-+		return -EINVAL;
++-+	}
++-+
++- #if defined(CONFIG_KALLSYMS_ALL) && LINUX_VERSION_CODE < KERNEL_VERSION(5,7,0)
++- #define __RESOLVE_EXTERNAL_SYMBOL(symbol)			\
++- 	symbol##_sym = (void *)kallsyms_lookup_name(#symbol);	\
++- 	if (!symbol##_sym)					\
++- 		return -EINVAL
++-+#elif defined(CONFIG_KALLSYMS_ALL) && LINUX_VERSION_CODE >= KERNEL_VERSION(5,7,0)
++-+#define __RESOLVE_EXTERNAL_SYMBOL(symbol)				\
++-+	symbol##_sym = (void *)kallsyms_lookup_name_sym(#symbol);	\
++-+	if (!symbol##_sym)						\
++-+		return -EINVAL
++- #else
++- #define __RESOLVE_EXTERNAL_SYMBOL(symbol)			\
++- 	symbol##_sym = &symbol
++- #endif
++- #define RESOLVE_EXTERNAL_SYMBOL(symbol...) __RESOLVE_EXTERNAL_SYMBOL(symbol)
++--
++-+	
++-+	RESOLVE_EXTERNAL_SYMBOL(__get_vm_area_caller);
++- 	RESOLVE_EXTERNAL_SYMBOL(ioremap_page_range);
++-+	RESOLVE_EXTERNAL_SYMBOL(vmap_pages_range_noflush);
++- #ifdef CONFIG_X86
++- 	RESOLVE_EXTERNAL_SYMBOL(lapic_timer_period);
++- #endif
++--- 
++-2.25.1
++-
++-- 
++2.25.1
++
+diff --git a/configs/arm64/zynqmp-kv260.c b/configs/arm64/zynqmp-kv260.c
+new file mode 100644
+index 0000000..bfc42c0
+--- /dev/null
++++ b/configs/arm64/zynqmp-kv260.c
+@@ -0,0 +1,304 @@
++/*
++ * Jailhouse, a Linux-based partitioning hypervisor
++ *
++ * Configuration for Xilinx ZynqMP ZCU102 eval board
++ *
++ * Copyright (c) Siemens AG, 2016
++ *
++ * Authors:
++ *  Jan Kiszka <jan.kiszka@siemens.com>
++ *
++ * This work is licensed under the terms of the GNU GPL, version 2.  See
++ * the COPYING file in the top-level directory.
++ *
++ * Reservation via device tree: 0x800000000..0x83fffffff
++ */
++#include <jailhouse/types.h>
++#include <jailhouse/cell-config.h>
++#include <asm/qos-400.h>
++#include <zynqmp-qos-config.h>
++
++struct {
++	struct jailhouse_system header;
++	__u64 cpus[1];
++	struct jailhouse_memory mem_regions[24];
++	struct jailhouse_irqchip irqchips[1];
++	struct jailhouse_pci_device pci_devices[2];
++	union jailhouse_stream_id stream_ids[3];
++	struct jailhouse_qos_device qos_devices[35];
++} __attribute__((packed)) config = {
++	.header = {
++		.signature = JAILHOUSE_SYSTEM_SIGNATURE,
++		.revision = JAILHOUSE_CONFIG_REVISION,
++		.flags = JAILHOUSE_SYS_VIRTUAL_DEBUG_CONSOLE,
++		.hypervisor_memory = {
++			.phys_start = 0x7f000000,
++			.size =       0x01000000,
++		},
++		.debug_console = {
++			.address = 0xff010000,
++			.size = 0x1000,
++			.type = JAILHOUSE_CON_TYPE_XUARTPS,
++			.flags = JAILHOUSE_CON_ACCESS_MMIO |
++				 JAILHOUSE_CON_REGDIST_4,
++		},
++		.platform_info = {
++			.pci_mmconfig_base = 0xfc000000,
++			.pci_mmconfig_end_bus = 0,
++
++			.pci_is_virtual = 1,
++			.pci_domain = -1,
++			.color = {
++				.way_size = 0x10000,
++				.root_map_offset = 0x0C000000000,
++			},
++			.iommu_units = {
++				{
++					.type = JAILHOUSE_IOMMU_ARM_MMU500,
++					.base = 0xfd800000,
++					.size = 0x20000,
++				},
++			},
++			.arm = {
++				.gic_version = 2,
++				.gicd_base = 0xf9010000,
++				.gicc_base = 0xf902f000,
++				.gich_base = 0xf9040000,
++				.gicv_base = 0xf906f000,
++				.maintenance_irq = 25,
++			},
++			.memguard = {
++				/* For this SoC we have:
++				   - 32 SGIs and PPIs
++				   - 8 SPIs
++				   - 148 system interrupts
++				   ------ Total = 188
++				   */
++				.num_irqs = 188,
++				.hv_timer = 26,
++				.irq_prio_min = 0xf0,
++				.irq_prio_max = 0x00,
++				.irq_prio_step = 0x10,
++				.irq_prio_threshold = 0x10,
++				.num_pmu_irq = 4,
++				/* One PMU irq per CPU */
++				.pmu_cpu_irq = {
++					175, 176, 177, 178,
++				},
++			},
++			.qos = {
++				.nic_base = 0xfd700000,
++				/* 1MiB Aperture */
++				.nic_size = 0x100000,
++			},
++		},
++
++		.root_cell = {
++			.name = "ZynqMP-KV260",
++
++			.cpu_set_size = sizeof(config.cpus),
++			.num_memory_regions = ARRAY_SIZE(config.mem_regions),
++			.num_irqchips = ARRAY_SIZE(config.irqchips),
++			.num_pci_devices = ARRAY_SIZE(config.pci_devices),
++			.num_stream_ids = ARRAY_SIZE(config.stream_ids),
++			.num_qos_devices = ARRAY_SIZE(config.qos_devices),
++
++			.vpci_irq_base = 136-32,
++		},
++	},
++
++	.cpus = {
++		0xf,
++	},
++
++	.mem_regions = {
++		/* IVSHMEM shared memory region for 0001:00:00.0 */
++		JAILHOUSE_SHMEM_NET_REGIONS(0x060000000, 0),
++		/* IVSHMEM shared memory region for 0001:00:01.0 */
++		JAILHOUSE_SHMEM_NET_REGIONS(0x060100000, 0),
++		/* MMIO (permissive) */ {
++			.phys_start = 0xfd000000,
++			.virt_start = 0xfd000000,
++			.size =	      0x03000000,
++			.flags = JAILHOUSE_MEM_READ | JAILHOUSE_MEM_WRITE |
++				JAILHOUSE_MEM_IO,
++		},
++		/* RAM */ {
++			.phys_start = 0x0,
++			.virt_start = 0x0,
++			.size = 0x7f000000,
++			.flags = JAILHOUSE_MEM_READ | JAILHOUSE_MEM_WRITE |
++				JAILHOUSE_MEM_EXECUTE,
++		},
++		/* RAM */ {
++			.phys_start = 0x800000000,
++			.virt_start = 0x800000000,
++			.size = 0x080000000,
++			.flags = JAILHOUSE_MEM_READ | JAILHOUSE_MEM_WRITE |
++				JAILHOUSE_MEM_EXECUTE,
++		},
++		/* PCI host bridge */ {
++			.phys_start = 0x8000000000,
++			.virt_start = 0x8000000000,
++			.size = 0x1000000,
++			.flags = JAILHOUSE_MEM_READ | JAILHOUSE_MEM_WRITE |
++				JAILHOUSE_MEM_IO,
++		},
++	},
++
++	.irqchips = {
++		/* GIC */ {
++			.address = 0xf9010000,
++			.pin_base = 32,
++			.pin_bitmap = {
++				0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
++			},
++		},
++	},
++
++	.pci_devices = {
++		/* 0001:00:01.0 */ {
++			.type = JAILHOUSE_PCI_TYPE_IVSHMEM,
++			.domain = 1,
++			.bdf = 1 << 3,
++			.bar_mask = JAILHOUSE_IVSHMEM_BAR_MASK_INTX,
++			.shmem_regions_start = 0,
++			.shmem_dev_id = 0,
++			.shmem_peers = 2,
++			.shmem_protocol = JAILHOUSE_SHMEM_PROTO_VETH,
++		},
++		/* 0001:00:02.0 */ {
++			.type = JAILHOUSE_PCI_TYPE_IVSHMEM,
++			.domain = 1,
++			.bdf = 2 << 3,
++			.bar_mask = JAILHOUSE_IVSHMEM_BAR_MASK_INTX,
++			.shmem_regions_start = 4,
++			.shmem_dev_id = 0,
++			.shmem_peers = 2,
++			.shmem_protocol = JAILHOUSE_SHMEM_PROTO_VETH,
++		},
++	},
++
++	.stream_ids = {
++		{
++			.mmu500.id = 0x860,
++			.mmu500.mask_out = 0x0,
++		},
++		{
++			.mmu500.id = 0x861,
++			.mmu500.mask_out = 0x0,
++		},
++		{
++			.mmu500.id = 0x870,
++			.mmu500.mask_out = 0xf,
++		},
++	},
++
++	.qos_devices = {
++		{
++			.name = "rpu0",
++			.flags = (FLAGS_HAS_REGUL),
++			.base = M_RPU0_BASE,
++		},
++
++		{
++			.name = "rpu1",
++			.flags = (FLAGS_HAS_REGUL),
++			.base = M_RPU1_BASE,
++		},
++
++		{
++			.name = "adma",
++			.flags = (FLAGS_HAS_REGUL),
++			.base = M_ADMA_BASE,
++		},
++
++		{
++			.name = "afifm0",
++			.flags = (FLAGS_HAS_REGUL),
++			.base = M_AFIFM0_BASE,
++		},
++		{
++			.name = "afifm1",
++			.flags = (FLAGS_HAS_REGUL),
++			.base = M_AFIFM1_BASE,
++		},
++
++		{
++			.name = "afifm2",
++			.flags = (FLAGS_HAS_REGUL),
++			.base = M_AFIFM2_BASE,
++		},
++
++		{
++			.name = "smmutbu5",
++			.flags = (FLAGS_HAS_REGUL),
++			.base = M_INITFPDSMMUTBU5_BASE,
++		},
++
++		{
++			.name = "dp",
++			.flags = (FLAGS_HAS_REGUL),
++			.base = M_DP_BASE,
++		},
++
++		{
++			.name = "afifm3",
++			.flags = (FLAGS_HAS_REGUL),
++			.base = M_AFIFM3_BASE,
++		},
++
++		{
++			.name = "afifm4",
++			.flags = (FLAGS_HAS_REGUL),
++			.base = M_AFIFM4_BASE,
++		},
++
++		{
++			.name = "afifm5",
++			.flags = (FLAGS_HAS_REGUL),
++			.base = M_AFIFM5_BASE,
++		},
++
++		{
++			.name = "gpu",
++			.flags = (FLAGS_HAS_REGUL),
++			.base = M_GPU_BASE,
++		},
++
++		{
++			.name = "pcie",
++			.flags = (FLAGS_HAS_REGUL),
++			.base = M_PCIE_BASE,
++		},
++
++		{
++			.name = "gdma",
++			.flags = (FLAGS_HAS_REGUL),
++			.base = M_GDMA_BASE,
++		},
++
++		{
++			.name = "sata",
++			.flags = (FLAGS_HAS_REGUL),
++			.base = M_SATA_BASE,
++		},
++
++		{
++			.name = "coresight",
++			.flags = (FLAGS_HAS_REGUL),
++			.base = M_CORESIGHT_BASE,
++		},
++
++		{
++			.name = "issib2",
++			.flags = (FLAGS_HAS_REGUL),
++			.base = ISS_IB2_BASE,
++		},
++		{
++			.name = "issib6",
++			.flags = (FLAGS_HAS_REGUL),
++			.base = ISS_IB6_BASE,
++		},
++	},
++};
+diff --git a/driver/main.c b/driver/main.c
+index 1ff4193..fdbbe40 100644
+--- a/driver/main.c
++++ b/driver/main.c
+@@ -22,7 +22,9 @@
+ #include <linux/miscdevice.h>
+ #include <linux/firmware.h>
+ #include <linux/mm.h>
++#if LINUX_VERSION_CODE < KERNEL_VERSION(5,7,0)
+ #include <linux/kallsyms.h>
++#endif
+ #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,11,0)
+ #include <linux/sched/signal.h>
+ #endif
+@@ -110,6 +112,13 @@ static bool console_available;
+ static struct resource *hypervisor_mem_res;
+ 
+ static typeof(ioremap_page_range) *ioremap_page_range_sym;
++static typeof(__get_vm_area_caller) *__get_vm_area_caller_sym;
++static int (*vmap_pages_range_noflush_sym) (unsigned long, unsigned long,  
++                pgprot_t, struct page **, unsigned int);
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,7,0)
++unsigned long (*kallsyms_lookup_name_sym)(const char*);
++#endif
++
+ #ifdef CONFIG_X86
+ #if LINUX_VERSION_CODE < KERNEL_VERSION(5,3,0)
+ #define lapic_timer_period	lapic_timer_frequency
+@@ -155,6 +164,21 @@ static void init_hypercall(void)
+ }
+ #endif
+ 
++static unsigned long lookup_kallsyms_lookup_name(void) 
++{
++    struct kprobe kp;
++    unsigned long addr;
++    
++    memset(&kp, 0, sizeof(struct kprobe));
++    kp.symbol_name = "kallsyms_lookup_name";
++    if (register_kprobe(&kp) < 0) {
++        return 0;
++    }
++    addr = (unsigned long)kp.addr;
++    unregister_kprobe(&kp);
++    return addr;
++}
++
+ static void copy_console_page(struct jailhouse_virt_console *dst)
+ {
+ 	unsigned int tail;
+@@ -206,7 +230,7 @@ static long get_max_cpus(u32 cpu_set_size,
+ 
+ #if LINUX_VERSION_CODE >= KERNEL_VERSION(5,8,0)
+ #define __get_vm_area(size, flags, start, end)			\
+-	__get_vm_area_caller(size, flags, start, end,		\
++	__get_vm_area_caller_sym(size, flags, start, end,	\
+ 			     __builtin_return_address(0))
+ #endif
+ 
+@@ -214,6 +238,11 @@ void *jailhouse_ioremap(phys_addr_t phys, unsigned long virt,
+ 			unsigned long size)
+ {
+ 	struct vm_struct *vma;
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,15,0)
++	unsigned int i, nr = size >> PAGE_SHIFT;
++	struct page ** page_list = kmalloc(sizeof(struct page *) * nr,
++							GFP_KERNEL);
++#endif
+ 
+ 	size = PAGE_ALIGN(size);
+ 	if (virt)
+@@ -226,12 +255,29 @@ void *jailhouse_ioremap(phys_addr_t phys, unsigned long virt,
+ 		return NULL;
+ 	vma->phys_addr = phys;
+ 
++
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,15,0)
++	for (i = 0; i < nr; i += 1U){
++		page_list[i]=phys_to_page(phys + (i << PAGE_SHIFT));
++	}	
++	if (vmap_pages_range_noflush_sym((unsigned long)vma->addr,
++				   (unsigned long)vma->addr + size, 
++				   PAGE_KERNEL_EXEC,
++				   page_list,
++				   PAGE_SHIFT
++				   )) {
++		vunmap(vma->addr);
++		return NULL;
++	}
++	kfree(page_list);
++#else
+ 	if (ioremap_page_range_sym((unsigned long)vma->addr,
+-				   (unsigned long)vma->addr + size, phys,
+-				   PAGE_KERNEL_EXEC)) {
++			   (unsigned long)vma->addr + size, phys,
++			   PAGE_KERNEL_EXEC)) {
+ 		vunmap(vma->addr);
+ 		return NULL;
+ 	}
++#endif
+ 
+ 	return vma->addr;
+ }
+@@ -1040,22 +1086,37 @@ static struct notifier_block jailhouse_shutdown_nb = {
+ 	.notifier_call = jailhouse_shutdown_notify,
+ };
+ 
++
+ static int __init jailhouse_init(void)
+ {
+ 	int err;
+ 
++	// Get the address of kallsyms_lookup_name function
++	kallsyms_lookup_name_sym = (unsigned long (*)(const char*))lookup_kallsyms_lookup_name();
++	if(!kallsyms_lookup_name_sym){
++		pr_err("kallsyms_lookup_name function not resolved\n");
++		return -EINVAL;
++	}
++
+ #if defined(CONFIG_KALLSYMS_ALL) && LINUX_VERSION_CODE < KERNEL_VERSION(5,7,0)
+ #define __RESOLVE_EXTERNAL_SYMBOL(symbol)			\
+ 	symbol##_sym = (void *)kallsyms_lookup_name(#symbol);	\
+ 	if (!symbol##_sym)					\
+ 		return -EINVAL
++#elif defined(CONFIG_KALLSYMS_ALL) && LINUX_VERSION_CODE >= KERNEL_VERSION(5,7,0)
++#define __RESOLVE_EXTERNAL_SYMBOL(symbol)				\
++	symbol##_sym = (void *)kallsyms_lookup_name_sym(#symbol);	\
++	if (!symbol##_sym)						\
++		return -EINVAL
+ #else
+ #define __RESOLVE_EXTERNAL_SYMBOL(symbol)			\
+ 	symbol##_sym = &symbol
+ #endif
+ #define RESOLVE_EXTERNAL_SYMBOL(symbol...) __RESOLVE_EXTERNAL_SYMBOL(symbol)
+-
++	
++	RESOLVE_EXTERNAL_SYMBOL(__get_vm_area_caller);
+ 	RESOLVE_EXTERNAL_SYMBOL(ioremap_page_range);
++	RESOLVE_EXTERNAL_SYMBOL(vmap_pages_range_noflush);
+ #ifdef CONFIG_X86
+ 	RESOLVE_EXTERNAL_SYMBOL(lapic_timer_period);
+ #endif
+-- 
+2.25.1
+

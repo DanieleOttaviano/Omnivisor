@@ -1,51 +1,60 @@
 #!/bin/bash
 
-# Colors
-GREEN='\033[1;32m'
-CYAN='\033[1;36m'
-RED='\033[1;31m'
-RESET='\033[0m'
-
 usage() {
-  echo -e "${GREEN}Usage: $0${RESET} \r\n \
-  This script build QEMU for the specified <target> and <backend>:\r\n \
-    [-t <target>]\r\n \
-    [-b <backend>]\r\n \
-    [-h help]" 1>&2
+  cat <<EOF
+$(basename "$0") - Compile QEMU for a target/backend
+
+Usage:
+  $0 -t <target> -b <backend>
+
+Options:
+  -t, --target <target>     Target board/platform
+  -b, --backend <backend>   Backend (e.g. jailhouse)
+  -h, --help                Show this help message
+EOF
   exit 1
 }
 
-# DIRECTORIES
-curr_dir=$(dirname -- "$(readlink -f -- "$0")")
-script_dir=$(dirname "${curr_dir}")
-source "${script_dir}"/common/common.sh
+current_dir=$(dirname -- "$(readlink -f -- "$0")")
+script_dir=$(dirname "$current_dir")
+source "$script_dir/common/common.sh"
 
-while getopts "t:b:h" o; do
-  case "${o}" in
-  t)
-    TARGET=${OPTARG}
-    ;;
-  b)
-    BACKEND=${OPTARG}
-    ;;
-  h)
-    usage
-    ;;
-  *)
-    usage
-    ;;
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -t|--target) TARGET="$2"; shift 2 ;;
+    -b|--backend) BACKEND="$2"; shift 2 ;;
+    -h|--help) usage ;;
+    *) error "Unknown option: $1"; usage ;;
   esac
 done
-shift $((OPTIND - 1))
 
-# Set the Environment
-source "${script_dir}"/common/set_environment.sh "${TARGET}" "${BACKEND}"
+source "$script_dir/common/set_environment.sh" "$TARGET" "$BACKEND"
 
-cd "${qemu_dir}" || exit 1
-./configure --target-list=aarch64-softmmu
-make -j"$(nproc)"
-if [[ $? -ne 0 ]]; then
-  echo -e "${RED}Error: The make command failed during the compilation of QEMU.${RESET}"
+cd "$qemu_dir" || { error "QEMU directory not found: $qemu_dir"; exit 1; }
+
+# -------------------
+# Configure & Build
+# -------------------
+CONFIG_FLAGS=(
+  --target-list="aarch64-softmmu,microblazeel-softmmu,riscv32-softmmu"
+  --enable-fdt
+  --enable-slirp
+  --disable-kvm
+  --disable-xen
+  --enable-gcrypt
+)
+
+echo "Configuring QEMU with:"
+printf '  %s\n' "${CONFIG_FLAGS[@]}"
+
+if ! ./configure "${CONFIG_FLAGS[@]}"; then
+  error "QEMU configure failed."
   exit 1
 fi
-echo -e "${GREEN}QEMU has been successfully compiled${RESET}"
+
+if ! make -j"$(nproc)"; then
+  error "The make command failed during QEMU compilation."
+  exit 1
+fi
+
+success "QEMU has been successfully compiled"
