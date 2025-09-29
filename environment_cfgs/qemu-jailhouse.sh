@@ -1,11 +1,11 @@
 #!/bin/bash
 
 ## QEMU TAP MODE
-IP="192.0.3.76"
+IP="127.0.0.1"
 USER="root"
-SSH_ARGS=""
-RSYNC_ARGS_SSH=""
-RSYNC_ARGS=""
+SSH_ARGS="-p 2222"
+RSYNC_ARGS_SSH="ssh -p 2222"
+RSYNC_ARGS="-e"
 RSYNC_REMOTE_PATH=""
 
 
@@ -42,7 +42,7 @@ UBOOT_BUILD="n"
 # LINUX
 LINUX_BUILD="y"
 UPD_LINUX_COMPILE_ARGS=""
-LINUX_COMPILE_ARGS="-m"
+LINUX_COMPILE_ARGS="-m -n"
 LINUX_PATCH_ARGS="-d jailhouse_enable" # preempt-rt
 LINUX_REPOSITORY="https://github.com/Xilinx/linux-xlnx.git"
 LINUX_BRANCH="xlnx_rebase_v6.1_LTS"

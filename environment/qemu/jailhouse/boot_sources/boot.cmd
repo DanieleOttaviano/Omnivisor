@@ -2,7 +2,10 @@
 k=Image
 d=system.dtb
 
-setenv bootargs "earlycon clk_ignore_unused earlyprintk root=/dev/mmcblk0 rw rootwait"
+# Bootargs for rootfs on MMC
+# setenv bootargs "earlycon clk_ignore_unused earlyprintk root=/dev/mmcblk0 rw rootwait"
+# Bootargs for 9p rootfs
+setenv bootargs "earlycon clk_ignore_unused earlyprintk root=root rootfstype=9p rootflags=trans=virtio,version=9p2000.L,msize=512000,cache=loose rw"
 
 # IP config for TFTP if needed
 setenv ipaddr 10.0.2.15

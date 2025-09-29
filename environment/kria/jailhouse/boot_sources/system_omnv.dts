@@ -108,6 +108,10 @@
 			no-map;
 			reg = <0x0 0x3ed00000 0x0 0x8000000>;
 		};
+		cell_reserved: cell@46d00000 {
+			no-map;
+			reg = <0x0 0x46d00000 0x0 0x8300000>;
+		};
 		others_reserved: other@70000000 {
 			no-map;
 			reg = <0x0 0x70000000 0x0 0x2000000>;

@@ -72,7 +72,7 @@ exec "$qemu_build/aarch64-softmmu/qemu-system-aarch64" \
   -device loader,file="$boot_dir/bl31.elf",cpu-num=0 \
   -device loader,file="$boot_dir/boot.scr",addr=0x20000000,force-raw=on \
   -device loader,file="$boot_dir/system.dtb",addr=0x100000,force-raw=on \
-  -drive if=sd,format=raw,index=1,file="$rootfs_dir/rootfs.ext4" \
+  -virtfs local,id=hostfs,path=$rootfs_dir/qemu,security_model=none,mount_tag=root \
   -global xlnx,zynqmp-boot.cpu-num=0 \
   -global xlnx,zynqmp-boot.use-pmufw=true \
   -global xlnx,zynqmp-boot.drive=pmu-cfg \
@@ -83,3 +83,6 @@ exec "$qemu_build/aarch64-softmmu/qemu-system-aarch64" \
   -net nic -net nic -net nic -net nic,netdev=eth3 \
   -machine-path "$TMPDIR" \
   -m 4G
+
+# Substitute the following line to the virtfs line to use an ext4 rootfs instead of 9p
+#  -drive if=sd,format=raw,index=1,file="$rootfs_dir/rootfs.ext4" \
