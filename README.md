@@ -44,6 +44,7 @@ A dedicated configuration script (`<target>-<backend>.sh`) defines the set of co
 - [x] Jailhouse
 
 ### 1.2 Supported Board:
+- [x] qemu  (emulated zcu102)
 - [x] kria  (kria kv260 Zynq Ultrascale +)
 - [x] kr260 (kria kr260 Zynq Ultrascale +)
 
