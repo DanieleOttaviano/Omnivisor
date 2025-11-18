@@ -14,5 +14,6 @@ environment/*/*/install/root/tests/test_omnivisor_guest/experiments/boot_exp/inm
 environment/*/*/install/root/tests/test_omnivisor_guest/experiments/boot_exp/inmates/APU/*
 environment/*/*/install/root/tests/test_omnivisor_guest/experiments/boot_exp/inmates/RISCV/*
 environment/.build_env
+test_*
 log
 **/*_old

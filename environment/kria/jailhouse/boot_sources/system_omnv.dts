@@ -108,10 +108,10 @@
 			no-map;
 			reg = <0x0 0x3ed00000 0x0 0x8000000>;
 		};
-		cell_reserved: cell@46d00000 {
-			no-map;
-			reg = <0x0 0x46d00000 0x0 0x8300000>;
-		};
+		//cell_reserved: cell@46d00000 {
+		//	no-map;
+		//	reg = <0x0 0x46d00000 0x0 0x8300000>;
+		//};
 		others_reserved: other@70000000 {
 			no-map;
 			reg = <0x0 0x70000000 0x0 0x2000000>;
@@ -268,6 +268,46 @@
 		status = "disabled";
 		u-boot,dm-pre-reloc;
 		phandle = <0x21>;
+	};
+	
+	cti0: cti0@fec20000 {
+		compatible = "arm,coresight-cti";
+		#address-cells = <2>;
+		#size-cells = <2>;
+		reg = <0x0 0xfec20000 0x0 0x30000>;
+		interrupt-parent = <0x04>;
+		interrupts = <0x00 0x8b 0x04>; /* GIC SPI 171, level-high */
+		irq-affinity = <0>;
+	};
+
+	cti1: cti1@fed20000 {
+		compatible = "arm,coresight-cti";
+		#address-cells = <2>;
+		#size-cells = <2>;
+		reg = <0x0 0xfed20000 0x0 0x30000>;
+		interrupt-parent = <0x04>;
+		interrupts = <0x00 0x8c 0x04>; /* GIC SPI 172, level-high */
+		irq-affinity = <1>;
+	};
+
+	cti2: cti2@fee20000 {
+		compatible = "arm,coresight-cti";
+		#address-cells = <2>;
+		#size-cells = <2>;
+		reg = <0x0 0xfee20000 0x0 0x30000>;
+		interrupt-parent = <0x04>;
+		interrupts = <0x00 0x8d 0x04>; /* GIC SPI 173, level-high */
+		irq-affinity = <2>;
+	};
+
+	cti3: cti3@fef20000 {
+		compatible = "arm,coresight-cti";
+		#address-cells = <2>;
+		#size-cells = <2>;
+		reg = <0x0 0xfef20000 0x0 0x30000>;
+		interrupt-parent = <0x04>;
+		interrupts = <0x00 0x8e 0x04>; /* GIC SPI 174, level-high */
+		irq-affinity = <3>;
 	};
 
 	pmu {
