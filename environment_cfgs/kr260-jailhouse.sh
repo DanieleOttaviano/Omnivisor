@@ -36,10 +36,10 @@ UBOOT_BUILD="n"
 LINUX_BUILD="y"
 UPD_LINUX_COMPILE_ARGS=""
 LINUX_COMPILE_ARGS="-m"
-LINUX_PATCH_ARGS="-d jailhouse_enable" # preempt-rt
+LINUX_PATCH_ARGS="-d preempt_rt, jailhouse_enable"
 LINUX_REPOSITORY="https://github.com/Xilinx/linux-xlnx.git"
 LINUX_BRANCH="xlnx_rebase_v6.1_LTS"
-LINUX_COMMIT=""
+LINUX_COMMIT="846ca23fed2afa1733eea745b80b5bc98011030b"
 LINUX_CONFIG=""
 
 # BUILDROOT
