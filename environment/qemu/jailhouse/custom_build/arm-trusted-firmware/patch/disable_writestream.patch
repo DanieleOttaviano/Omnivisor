@@ -1,0 +1,20 @@
+diff --git a/include/arch/aarch64/el3_common_macros.S b/include/arch/aarch64/el3_common_macros.S
+index 204625cee..db9e55c91 100644
+--- a/include/arch/aarch64/el3_common_macros.S
++++ b/include/arch/aarch64/el3_common_macros.S
+@@ -82,6 +82,15 @@
+ 	mov_imm	x0, MDCR_EL3_RESET_VAL
+ 	msr	mdcr_el3, x0
+ 
++	/* ---------------------------------------------------------------------
++	 * Configure CPUACTLR_EL1 to disable write streaming on Cortex-A53
++	 * ---------------------------------------------------------------------
++	 */
++	mrs x0, s3_1_c15_c2_0
++	orr x0, x0, #(0b11 << 27)   /* RADIS set to disable streaming */
++	orr x0, x0, #(0b11 << 25)   /* L1RADIS set to disable streaming */
++	msr s3_1_c15_c2_0, x0
++
+ 	/* ---------------------------------------------------------------------
+ 	 * Initialise CPTR_EL3, setting all fields rather than relying on hw.
+ 	 * All fields are architecturally UNKNOWN on reset.

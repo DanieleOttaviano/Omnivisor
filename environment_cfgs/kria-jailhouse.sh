@@ -13,7 +13,7 @@ ARCH="arm64"
 CROSS_COMPILE="aarch64-linux-gnu-"
 
 ## Boot Sources Configuration
-BOOTCMD_CONFIG="clean"
+BOOTCMD_CONFIG="clean_isolcpu"
 DTS_CONFIG="omnv"
 
 ## COMPONENTS ##
@@ -23,10 +23,10 @@ QEMU_BUILD="n"
 # ATF
 ATF_BUILD="y"
 ATF_COMPILE_ARGS=""
-ATF_PATCH_ARGS=""
-ATF_REPOSITORY="https://github.com/DanieleOttaviano/arm-trusted-firmware.git"
+ATF_PATCH_ARGS="-p omnv_xmpu_readwrite.patch"
+ATF_REPOSITORY="https://github.com/Xilinx/arm-trusted-firmware.git"
 ATF_BRANCH="master"
-ATF_COMMIT=""
+ATF_COMMIT="06044c2333740838293b174a22636b142d34fe7a"
 ATF_CONFIG=""
 
 # U-BOOT 
@@ -47,7 +47,7 @@ LINUX_PATCH_ARGS="-d preempt_rt, jailhouse_enable"
 LINUX_REPOSITORY="https://github.com/Xilinx/linux-xlnx.git"
 LINUX_BRANCH="xlnx_rebase_v6.1_LTS"
 LINUX_COMMIT="846ca23fed2afa1733eea745b80b5bc98011030b"
-LINUX_CONFIG="omnv"
+LINUX_CONFIG="omnv_isolcpu"
 
 # BUILDROOT
 BUILDROOT_BUILD="y"

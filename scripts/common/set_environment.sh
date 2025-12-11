@@ -59,6 +59,8 @@ qemu_bin_dir=${qemu_dir}/build/aarch64-softmmu
 # ATF
 atf_dir=${build_dir}/arm-trusted-firmware
 atf_image_dir=${atf_dir}/build/zynqmp/release/bl31
+custom_atf_dir=${custom_build_dir}/arm-trusted-firmware
+custom_atf_patch_dir=${custom_atf_dir}/patch
 
 # U-Boot
 uboot_dir=${build_dir}/u-boot
